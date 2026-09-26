@@ -22,6 +22,9 @@ struct NotchView: View {
     @AppStorage("liveActivityTimerEnabled") private var liveActivityTimerEnabled = true
     @AppStorage("liveActivityShelfEnabled") private var liveActivityShelfEnabled = true
     @AppStorage("liveActivityHideInFullscreen") private var liveActivityHideInFullscreen = true
+    @AppStorage("glassOpacity") private var glassOpacity = 0.58
+    @AppStorage("showPanelShadow") private var showPanelShadow = false
+    @AppStorage("glassMaterialStyle") private var glassMaterialStyle = "liquid"
 
     @ObservedObject private var fullscreen = FullscreenDetector.shared
 
@@ -162,31 +165,35 @@ struct NotchView: View {
             .frame(width: silhouetteWidth, height: silhouetteHeight, alignment: .top)
             .background(
                 ZStack {
-                    // 1. Native macOS Backdrop Vibrancy / Blur (translucent frosted glass)
-                    VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
+                    if glassMaterialStyle == "opaque" {
+                        Color.black
+                    } else {
+                        // 1. Native macOS Backdrop Vibrancy / Blur (translucent frosted glass)
+                        VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
 
-                    // 2. Liquid Glass Translucent Dark Graphite Tint
-                    // Keeps content contrast high while allowing the wallpaper and windows behind to show through
-                    LinearGradient(
-                        colors: [
-                            Color(white: 0.08).opacity(viewModel.isOpen ? 0.68 : (viewModel.hasNotch ? 0.94 : 0.78)),
-                            Color(white: 0.04).opacity(viewModel.isOpen ? 0.58 : (viewModel.hasNotch ? 0.88 : 0.70))
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
+                        // 2. Liquid Glass Translucent Dark Graphite Tint
+                        // Respects user glassOpacity preference
+                        LinearGradient(
+                            colors: [
+                                Color(white: 0.08).opacity(viewModel.isOpen ? glassOpacity : (viewModel.hasNotch ? 0.94 : 0.78)),
+                                Color(white: 0.03).opacity(viewModel.isOpen ? max(glassOpacity - 0.12, 0.08) : (viewModel.hasNotch ? 0.88 : 0.70))
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
 
-                    // 3. Apple Specular Glass Reflection Sheen
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.white.opacity(0.18), location: 0.0),
-                            .init(color: Color.white.opacity(0.04), location: 0.18),
-                            .init(color: Color.clear, location: 0.55),
-                            .init(color: Color.white.opacity(0.06), location: 1.0)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
+                        // 3. Apple Specular Glass Reflection Sheen
+                        LinearGradient(
+                            stops: [
+                                .init(color: Color.white.opacity(0.18 * (glassOpacity > 0.3 ? 1.0 : 0.5)), location: 0.0),
+                                .init(color: Color.white.opacity(0.04), location: 0.18),
+                                .init(color: Color.clear, location: 0.55),
+                                .init(color: Color.white.opacity(0.06), location: 1.0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    }
                 }
             )
             .clipShape(shape)
@@ -194,10 +201,10 @@ struct NotchView: View {
                 shape.stroke(
                     LinearGradient(
                         stops: [
-                            .init(color: Color.white.opacity(viewModel.isOpen ? 0.32 : (isLiveActivityActive ? 0.22 : 0)), location: 0.0),
-                            .init(color: Color.white.opacity(viewModel.isOpen ? 0.16 : (isLiveActivityActive ? 0.10 : 0)), location: 0.35),
-                            .init(color: Color.white.opacity(viewModel.isOpen ? 0.06 : (isLiveActivityActive ? 0.04 : 0)), location: 0.75),
-                            .init(color: Color.white.opacity(viewModel.isOpen ? 0.20 : (isLiveActivityActive ? 0.12 : 0)), location: 1.0)
+                            .init(color: Color.white.opacity(viewModel.isOpen ? 0.30 : (isLiveActivityActive ? 0.22 : 0)), location: 0.0),
+                            .init(color: Color.white.opacity(viewModel.isOpen ? 0.15 : (isLiveActivityActive ? 0.10 : 0)), location: 0.35),
+                            .init(color: Color.white.opacity(viewModel.isOpen ? 0.05 : (isLiveActivityActive ? 0.04 : 0)), location: 0.75),
+                            .init(color: Color.white.opacity(viewModel.isOpen ? 0.18 : (isLiveActivityActive ? 0.12 : 0)), location: 1.0)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -206,10 +213,10 @@ struct NotchView: View {
                 )
             )
             .shadow(
-                color: Color.black.opacity(viewModel.isOpen ? 0.40 : (isLiveActivityActive ? 0.25 : 0)),
-                radius: viewModel.isOpen ? 24 : 6,
+                color: showPanelShadow ? Color.black.opacity(viewModel.isOpen ? 0.35 : (isLiveActivityActive ? 0.20 : 0)) : Color.clear,
+                radius: viewModel.isOpen ? 20 : 6,
                 x: 0,
-                y: viewModel.isOpen ? 10 : 2
+                y: viewModel.isOpen ? 8 : 2
             )
             .position(x: silhouetteCenterX, y: silhouetteHeight / 2)
             .opacity((!viewModel.isOpen && !isLiveActivityActive && !viewModel.hasNotch) ? 0 : 1)

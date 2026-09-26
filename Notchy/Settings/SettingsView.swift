@@ -21,6 +21,10 @@ struct SettingsView: View {
     @AppStorage("liveActivityTimerEnabled") private var liveActivityTimerEnabled = true
     @AppStorage("liveActivityShelfEnabled") private var liveActivityShelfEnabled = true
     @AppStorage("liveActivityHideInFullscreen") private var liveActivityHideInFullscreen = true
+    @AppStorage("glassOpacity") private var glassOpacity = 0.58
+    @AppStorage("showPanelShadow") private var showPanelShadow = false
+    @AppStorage("glassMaterialStyle") private var glassMaterialStyle = "liquid"
+    @AppStorage("cardGlassOpacity") private var cardGlassOpacity = 0.50
 
     var body: some View {
         TabView {
@@ -48,6 +52,156 @@ struct SettingsView: View {
             .padding(18)
             .tabItem {
                 Label("Pages & Layout", systemImage: "square.grid.3x1.below.line.grid.1x2")
+            }
+
+            // Tab 2: Appearance & Liquid Glass Customization
+            Form {
+                Section("Liquid Glass Theme") {
+                    Picker("Theme Style", selection: $glassMaterialStyle) {
+                        Text("Liquid Glass (Frosted & Translucent)").tag("liquid")
+                        Text("Crystal Clear (Maximum Transparency)").tag("crystal")
+                        Text("Deep Graphite (Subtle Blur)").tag("graphite")
+                        Text("Classic Opaque (Solid Black)").tag("opaque")
+                    }
+                    .onChange(of: glassMaterialStyle) { newStyle in
+                        switch newStyle {
+                        case "crystal":
+                            glassOpacity = 0.35
+                            cardGlassOpacity = 0.35
+                        case "liquid":
+                            glassOpacity = 0.58
+                            cardGlassOpacity = 0.50
+                        case "graphite":
+                            glassOpacity = 0.80
+                            cardGlassOpacity = 0.65
+                        case "opaque":
+                            glassOpacity = 1.0
+                            cardGlassOpacity = 0.85
+                        default:
+                            break
+                        }
+                    }
+
+                    if glassMaterialStyle != "opaque" {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text("Panel Transparency / Tint")
+                                Spacer()
+                                Text("\(Int((1.0 - glassOpacity) * 100))% transparent (\(Int(glassOpacity * 100))% tint)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Slider(value: $glassOpacity, in: 0.20...0.95, step: 0.05) {
+                                Text("Glass Opacity")
+                            } minimumValueLabel: {
+                                Text("Crystal")
+                                    .font(.caption2)
+                            } maximumValueLabel: {
+                                Text("Dark")
+                                    .font(.caption2)
+                            }
+                        }
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text("Module Card Translucency")
+                                Spacer()
+                                Text("\(Int(cardGlassOpacity * 100))%")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Slider(value: $cardGlassOpacity, in: 0.20...0.90, step: 0.05) {
+                                Text("Card Opacity")
+                            } minimumValueLabel: {
+                                Text("Clear")
+                                    .font(.caption2)
+                            } maximumValueLabel: {
+                                Text("Solid")
+                                    .font(.caption2)
+                            }
+                        }
+                    }
+                }
+
+                Section("Drop Shadow & Edges") {
+                    Toggle(isOn: $showPanelShadow) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Outer Panel Shadow")
+                                .font(.body)
+                            Text("Draws an ambient drop shadow outside the expanded notch onto your wallpaper. Disabled by default for razor-sharp flush edges.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                Section("Live Material Preview") {
+                    ZStack {
+                        // Simulated colorful desktop wallpaper background (like macOS wallpaper)
+                        LinearGradient(
+                            colors: [Color.red.opacity(0.85), Color.purple.opacity(0.85), Color.blue.opacity(0.85)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                        // Preview Glass Plate
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Notchy Glass Preview")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundStyle(.white)
+                                Text("Wallpaper vibrancy softly showing through")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.white.opacity(0.7))
+                            }
+                            Spacer()
+
+                            // Sample mini module pod
+                            HStack(spacing: 6) {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.cyan)
+                                Text("Liquid Glass")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundStyle(.white)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(.ultraThinMaterial.opacity(cardGlassOpacity))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                            .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
+                                    )
+                            )
+                        }
+                        .padding(14)
+                        .background(
+                            ZStack {
+                                if glassMaterialStyle == "opaque" {
+                                    Color.black
+                                } else {
+                                    VisualEffectView(material: .hudWindow, blendingMode: .withinWindow)
+                                    Color.black.opacity(glassOpacity)
+                                }
+                            }
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.25), lineWidth: 1)
+                        )
+                        .padding(10)
+                    }
+                    .frame(height: 90)
+                }
+            }
+            .formStyle(.grouped)
+            .padding(14)
+            .tabItem {
+                Label("Appearance", systemImage: "paintpalette")
             }
 
             // Tab 2: Live Activities

@@ -48,6 +48,8 @@ public struct VisualEffectView: NSViewRepresentable {
 
 struct LiquidGlassPodModifier: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @AppStorage("cardGlassOpacity") private var cardGlassOpacity = 0.50
+    @AppStorage("glassMaterialStyle") private var glassMaterialStyle = "liquid"
     var cornerRadius: CGFloat = 16
     var isHovered: Bool = false
     var ambientTint: Color? = nil
@@ -55,18 +57,18 @@ struct LiquidGlassPodModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .background {
-                if reduceTransparency {
+                if reduceTransparency || glassMaterialStyle == "opaque" {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(Color(white: 0.12))
+                        .fill(Color(white: 0.14))
                 } else {
                     ZStack {
-                        // Base optical glass material - semi-transparent so backdrop blur shows through
+                        // Base optical glass material - user controlled translucency
                         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .fill(.ultraThinMaterial.opacity(0.55))
+                            .fill(.ultraThinMaterial.opacity(cardGlassOpacity))
 
                         // Subtle dark tint for card depth & contrast
                         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .fill(Color.black.opacity(0.20))
+                            .fill(Color.black.opacity(0.18))
 
                         // Ambient chromatic refraction if provided (e.g. from album art)
                         if let tint = ambientTint {
