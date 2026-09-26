@@ -290,21 +290,24 @@ private struct UnassignedShelfView: View {
                                     .font(.system(size: 10, weight: .medium))
 
                                 Menu {
-                                    Button("Add to Page 1") {
-                                        withAnimation { layout.moveModule(module, toPageIndex: 0) }
-                                    }
-                                    Button("Add to Page 2") {
-                                        withAnimation { layout.moveModule(module, toPageIndex: 1) }
-                                    }
-                                    Button("Add to Page 3") {
-                                        withAnimation { layout.moveModule(module, toPageIndex: 2) }
+                                    ForEach(Array(layout.pages.enumerated()), id: \.element.id) { pIndex, page in
+                                        Button("Add to Page \(pIndex + 1) (\(page.title))") {
+                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                                layout.moveModule(module, toPageIndex: pIndex)
+                                            }
+                                        }
                                     }
                                 } label: {
                                     Image(systemName: "plus")
-                                        .font(.system(size: 8, weight: .bold))
+                                        .font(.system(size: 8.5, weight: .bold))
+                                        .foregroundStyle(.primary)
+                                        .frame(width: 16, height: 16)
+                                        .background(Color.secondary.opacity(0.12), in: Circle())
                                 }
                                 .menuStyle(.borderlessButton)
-                                .frame(width: 14)
+                                .menuIndicator(.hidden)
+                                .fixedSize()
+                                .help("Add \(module.title) to a page")
                             }
                             .padding(.horizontal, 7)
                             .padding(.vertical, 4)
