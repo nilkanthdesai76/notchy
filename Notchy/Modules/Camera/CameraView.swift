@@ -11,6 +11,7 @@ import Combine
 
 struct CameraView: View {
     @EnvironmentObject private var camera: CameraManager
+    @Environment(\.moduleCornerRadii) private var radii
     @State private var isHovered = false
 
     var body: some View {
@@ -27,9 +28,9 @@ struct CameraView: View {
                 if camera.isRunning, let layer = camera.previewLayer {
                     CameraPreview(layer: layer)
                         .scaleEffect(x: -1, y: 1) // Mirror reflection flip
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .clipShape(radii.asShape)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            radii.asShape
                                 .strokeBorder(Color.green.opacity(0.8), lineWidth: 1.5)
                         )
                         .overlay(alignment: .topTrailing) {
@@ -72,11 +73,11 @@ struct CameraView: View {
                             .foregroundStyle(.white.opacity(isHovered ? 0.9 : 0.6))
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .liquidGlassPod(cornerRadius: 16)
+                    .liquidGlassPod()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .contentShape(radii.asShape)
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }

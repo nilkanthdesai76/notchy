@@ -514,15 +514,30 @@ private struct NotchExpandedContent: View {
                 .buttonStyle(.plain)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .liquidGlassPod(cornerRadius: 16)
+            .environment(\.moduleCornerRadii, ModuleCornerRadii(topLeading: 16, bottomLeading: 26, bottomTrailing: 26, topTrailing: 16))
+            .liquidGlassPod()
         } else {
             let gap: CGFloat = 8
-            let available = width - CGFloat(max(0, page.modules.count - 1)) * gap
+            let count = page.modules.count
+            let available = width - CGFloat(max(0, count - 1)) * gap
 
             HStack(spacing: gap) {
-                ForEach(page.modules) { module in
+                ForEach(Array(page.modules.enumerated()), id: \.element.id) { index, module in
                     let itemWidth = moduleWidth(for: module, in: page.modules, available: available)
+                    let isFirst = index == 0
+                    let isLast = index == count - 1
+
+                    // Concentric squircle curvature matching the notch's 38pt bottomRadius with 12pt padding:
+                    // R_inner = 38 - 12 = 26pt for outer bottom corners
+                    let radii = ModuleCornerRadii(
+                        topLeading: 16,
+                        bottomLeading: isFirst ? 26 : 16,
+                        bottomTrailing: isLast ? 26 : 16,
+                        topTrailing: 16
+                    )
+
                     moduleView(for: module)
+                        .environment(\.moduleCornerRadii, radii)
                         .frame(width: itemWidth, height: 165)
                 }
             }

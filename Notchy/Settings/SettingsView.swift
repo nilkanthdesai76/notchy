@@ -396,7 +396,25 @@ struct SettingsView: View {
                     ) {
                         let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: true] as CFDictionary
                         _ = AXIsProcessTrustedWithOptions(options)
-                        SystemSettings.openAccessibilityPrivacy()
+                    }
+                }
+
+                Section {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Quit Notchy")
+                                .font(.body)
+                            Text("Completely terminate the background application and release all system resources.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button(role: .destructive) {
+                            NSApplication.shared.terminate(nil)
+                        } label: {
+                            Label("Quit Notchy", systemImage: "power")
+                        }
+                        .controlSize(.regular)
                     }
                 }
             }

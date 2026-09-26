@@ -105,35 +105,93 @@ public struct AppleLiquidGlassSurface: NSViewRepresentable {
     }
 }
 
+// MARK: - Module Corner Radii
+
+public struct ModuleCornerRadii: Equatable, Sendable {
+    public var topLeading: CGFloat
+    public var bottomLeading: CGFloat
+    public var bottomTrailing: CGFloat
+    public var topTrailing: CGFloat
+
+    public init(
+        topLeading: CGFloat = 16,
+        bottomLeading: CGFloat = 16,
+        bottomTrailing: CGFloat = 16,
+        topTrailing: CGFloat = 16
+    ) {
+        self.topLeading = topLeading
+        self.bottomLeading = bottomLeading
+        self.bottomTrailing = bottomTrailing
+        self.topTrailing = topTrailing
+    }
+
+    public static let standard = ModuleCornerRadii(topLeading: 16, bottomLeading: 16, bottomTrailing: 16, topTrailing: 16)
+
+    public var asShape: UnevenRoundedRectangle {
+        UnevenRoundedRectangle(
+            topLeadingRadius: topLeading,
+            bottomLeadingRadius: bottomLeading,
+            bottomTrailingRadius: bottomTrailing,
+            topTrailingRadius: topTrailing,
+            style: .continuous
+        )
+    }
+}
+
+private struct ModuleCornerRadiiKey: EnvironmentKey {
+    static let defaultValue: ModuleCornerRadii = .standard
+}
+
+extension EnvironmentValues {
+    public var moduleCornerRadii: ModuleCornerRadii {
+        get { self[ModuleCornerRadiiKey.self] }
+        set { self[ModuleCornerRadiiKey.self] = newValue }
+    }
+}
+
 // MARK: - Liquid Glass Pod Modifier
 
 struct LiquidGlassPodModifier: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.moduleCornerRadii) private var envRadii
     @AppStorage("cardGlassOpacity") private var cardGlassOpacity = 0.50
     @AppStorage("glassMaterialStyle") private var glassMaterialStyle = "liquid"
-    var cornerRadius: CGFloat = 16
+    var cornerRadius: CGFloat? = nil
     var isHovered: Bool = false
     var ambientTint: Color? = nil
+
+    private var effectiveShape: UnevenRoundedRectangle {
+        if let cr = cornerRadius, cr != 16 {
+            return UnevenRoundedRectangle(
+                topLeadingRadius: cr,
+                bottomLeadingRadius: cr,
+                bottomTrailingRadius: cr,
+                topTrailingRadius: cr,
+                style: .continuous
+            )
+        }
+        return envRadii.asShape
+    }
 
     func body(content: Content) -> some View {
         content
             .background {
                 if reduceTransparency || glassMaterialStyle == "opaque" {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    effectiveShape
                         .fill(Color(white: 0.14))
                 } else {
                     ZStack {
                         // Base optical glass material - user controlled translucency
-                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        effectiveShape
                             .fill(.ultraThinMaterial.opacity(cardGlassOpacity))
 
                         // Subtle dark tint for card depth & contrast
-                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        effectiveShape
                             .fill(Color.black.opacity(0.18))
 
                         // Ambient chromatic refraction if provided (e.g. from album art)
                         if let tint = ambientTint {
-                            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            effectiveShape
                                 .fill(
                                     RadialGradient(
                                         colors: [tint.opacity(0.22), tint.opacity(0.06), Color.clear],
@@ -145,7 +203,7 @@ struct LiquidGlassPodModifier: ViewModifier {
                         }
 
                         // Subtle surface sheen
-                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        effectiveShape
                             .fill(
                                 LinearGradient(
                                     colors: [
@@ -161,7 +219,7 @@ struct LiquidGlassPodModifier: ViewModifier {
             }
             .overlay {
                 // Apple Specular Rim Highlight: light striking the top-leading beveled glass edge
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                effectiveShape
                     .strokeBorder(
                         LinearGradient(
                             stops: [
@@ -176,6 +234,7 @@ struct LiquidGlassPodModifier: ViewModifier {
                         lineWidth: 1
                     )
             }
+            .clipShape(effectiveShape)
     }
 }
 
@@ -184,7 +243,7 @@ struct LiquidGlassPodModifier: ViewModifier {
 extension View {
     /// Applies Apple's official Liquid Glass pod styling with concentric squircle curvature
     func liquidGlassPod(
-        cornerRadius: CGFloat = 16,
+        cornerRadius: CGFloat? = nil,
         isHovered: Bool = false,
         ambientTint: Color? = nil
     ) -> some View {

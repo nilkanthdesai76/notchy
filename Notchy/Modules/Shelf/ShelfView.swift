@@ -11,6 +11,7 @@ import UniformTypeIdentifiers
 
 struct ShelfView: View {
     @ObservedObject var shelf = ShelfManager.shared
+    @Environment(\.moduleCornerRadii) private var radii
     @State private var isTargeted = false
 
     var body: some View {
@@ -74,9 +75,9 @@ struct ShelfView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .liquidGlassPod(cornerRadius: 16)
+        .liquidGlassPod()
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            radii.asShape
                 .strokeBorder(isTargeted ? Color.blue : Color.clear, lineWidth: 1.5)
         )
         .onDrop(of: [.fileURL], isTargeted: $isTargeted) { providers in
