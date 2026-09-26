@@ -12,3 +12,5 @@ DerivedData
 *.hmap
 *.xccheckout
 *.xcscmblueprint
+dist/
+*.dmg
