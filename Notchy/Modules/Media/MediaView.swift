@@ -87,6 +87,17 @@ struct MediaView: View {
                 Image(nsImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
+            } else if media.state.artist.contains("YouTube") || media.state.bundleIdentifier.lowercased().contains("brave") || media.state.bundleIdentifier.lowercased().contains("chrome") || media.state.bundleIdentifier.lowercased().contains("safari") {
+                ZStack {
+                    LinearGradient(
+                        colors: [Color.red.opacity(0.85), Color(red: 0.6, green: 0.05, blue: 0.1)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    Image(systemName: "play.rectangle.fill")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundStyle(.white)
+                }
             } else {
                 ZStack {
                     LinearGradient(
