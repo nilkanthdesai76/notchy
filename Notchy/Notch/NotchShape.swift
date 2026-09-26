@@ -27,7 +27,7 @@ struct NotchSilhouetteShape: Shape {
 
         if hasInvertedEars && topRadius > 0.5 {
             let tr = min(topRadius, rect.height / 3, rect.width / 4)
-            let br = min(bottomRadius, rect.height / 2, rect.width / 4)
+            let br = min(bottomRadius, rect.height - tr, rect.width / 2)
 
             // Top-left start at display bezel edge
             path.move(to: CGPoint(x: rect.minX, y: rect.minY))

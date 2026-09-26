@@ -44,6 +44,67 @@ public struct VisualEffectView: NSViewRepresentable {
     }
 }
 
+// MARK: - Official Apple Liquid Glass Engine (NSGlassEffectView)
+
+public struct AppleLiquidGlassSurface: NSViewRepresentable {
+    public var cornerRadius: CGFloat
+    public var variant: Int = 11
+
+    public init(cornerRadius: CGFloat = 38, variant: Int = 11) {
+        self.cornerRadius = cornerRadius
+        self.variant = variant
+    }
+
+    public func makeNSView(context: Context) -> NSView {
+        if let glassType = NSClassFromString("NSGlassEffectView") as? NSView.Type {
+            let container = NSView()
+            container.translatesAutoresizingMaskIntoConstraints = false
+
+            let glass = glassType.init(frame: .zero)
+            glass.translatesAutoresizingMaskIntoConstraints = false
+            glass.setValue(cornerRadius, forKey: "cornerRadius")
+
+            let selVariant = NSSelectorFromString("set_variant:")
+            if glass.responds(to: selVariant) {
+                let imp = class_getMethodImplementation(object_getClass(glass), selVariant)
+                typealias VariantFn = @convention(c) (AnyObject, Selector, Int) -> Void
+                let fn = unsafeBitCast(imp, to: VariantFn.self)
+                fn(glass, selVariant, variant)
+            }
+
+            let selLensing = NSSelectorFromString("set_contentLensing:")
+            if glass.responds(to: selLensing) {
+                let imp = class_getMethodImplementation(object_getClass(glass), selLensing)
+                typealias BoolFn = @convention(c) (AnyObject, Selector, Bool) -> Void
+                let fn = unsafeBitCast(imp, to: BoolFn.self)
+                fn(glass, selLensing, true)
+            }
+
+            container.addSubview(glass)
+            NSLayoutConstraint.activate([
+                glass.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+                glass.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+                glass.topAnchor.constraint(equalTo: container.topAnchor),
+                glass.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+            ])
+            return container
+        }
+
+        // Fallback for earlier macOS
+        let fallback = NSVisualEffectView()
+        fallback.material = .hudWindow
+        fallback.blendingMode = .behindWindow
+        fallback.state = .active
+        return fallback
+    }
+
+    public func updateNSView(_ nsView: NSView, context: Context) {
+        if let glass = nsView.subviews.first, NSStringFromClass(type(of: glass)).contains("Glass") {
+            glass.setValue(cornerRadius, forKey: "cornerRadius")
+        }
+    }
+}
+
 // MARK: - Liquid Glass Pod Modifier
 
 struct LiquidGlassPodModifier: ViewModifier {

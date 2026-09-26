@@ -143,8 +143,9 @@ struct NotchView: View {
         let silhouetteCenterX = closedCenterX + (viewModel.openWidth / 2 - closedCenterX) * viewModel.reveal
 
         // Flared ears connecting to top bezel on notch Macs; continuous squircles on bottom
-        let topRadius: CGFloat = viewModel.isOpen ? 10 : (viewModel.hasNotch ? 6 : 14)
-        let bottomRadius: CGFloat = viewModel.isOpen ? 22 : (viewModel.hasNotch ? 10 : 14)
+        // When closed: 14pt bottom radius matching physical notch curvature. When open: 38pt sweeping squircle.
+        let topRadius: CGFloat = viewModel.isOpen ? 12 : (viewModel.hasNotch ? 8 : 14)
+        let bottomRadius: CGFloat = viewModel.isOpen ? 38 : (viewModel.hasNotch ? 14 : 14)
         let shape = NotchSilhouetteShape(
             topRadius: topRadius,
             bottomRadius: bottomRadius,
@@ -165,30 +166,36 @@ struct NotchView: View {
             .frame(width: silhouetteWidth, height: silhouetteHeight, alignment: .top)
             .background(
                 ZStack {
-                    if glassMaterialStyle == "opaque" {
+                    if !viewModel.isOpen {
+                        // Closed state: pure seamless hardware black matching display bezel
+                        Color.black
+                    } else if glassMaterialStyle == "opaque" {
                         Color.black
                     } else {
-                        // 1. Native macOS Backdrop Vibrancy / Blur (translucent frosted glass)
-                        VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
+                        // 1. Official Apple Liquid Glass Engine (NSGlassEffectView with variant 11 & content lensing)
+                        AppleLiquidGlassSurface(cornerRadius: 38, variant: 11)
 
                         // 2. Liquid Glass Translucent Dark Graphite Tint
                         // Respects user glassOpacity preference
                         LinearGradient(
-                            colors: [
-                                Color(white: 0.08).opacity(viewModel.isOpen ? glassOpacity : (viewModel.hasNotch ? 0.94 : 0.78)),
-                                Color(white: 0.03).opacity(viewModel.isOpen ? max(glassOpacity - 0.12, 0.08) : (viewModel.hasNotch ? 0.88 : 0.70))
+                            stops: [
+                                .init(color: Color.black.opacity(0.88), location: 0.0), // Deep anchoring black under bezel
+                                .init(color: Color(white: 0.08).opacity(glassOpacity), location: 0.18),
+                                .init(color: Color(white: 0.03).opacity(max(glassOpacity - 0.12, 0.08)), location: 0.85),
+                                .init(color: Color(white: 0.05).opacity(max(glassOpacity - 0.06, 0.10)), location: 1.0)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
                         )
 
-                        // 3. Apple Specular Glass Reflection Sheen
+                        // 3. Specular Glass Depth Sheen & Caustic Focus (Apple Liquid Glass)
                         LinearGradient(
                             stops: [
                                 .init(color: Color.white.opacity(0.18 * (glassOpacity > 0.3 ? 1.0 : 0.5)), location: 0.0),
                                 .init(color: Color.white.opacity(0.04), location: 0.18),
                                 .init(color: Color.clear, location: 0.55),
-                                .init(color: Color.white.opacity(0.06), location: 1.0)
+                                .init(color: Color.white.opacity(0.04), location: 0.85),
+                                .init(color: Color(red: 1.0, green: 0.88, blue: 0.75).opacity(0.18), location: 1.0) // Luminous bottom caustic
                             ],
                             startPoint: .top,
                             endPoint: .bottom
@@ -198,25 +205,48 @@ struct NotchView: View {
             )
             .clipShape(shape)
             .overlay(
-                shape.stroke(
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.white.opacity(viewModel.isOpen ? 0.30 : (isLiveActivityActive ? 0.22 : 0)), location: 0.0),
-                            .init(color: Color.white.opacity(viewModel.isOpen ? 0.15 : (isLiveActivityActive ? 0.10 : 0)), location: 0.35),
-                            .init(color: Color.white.opacity(viewModel.isOpen ? 0.05 : (isLiveActivityActive ? 0.04 : 0)), location: 0.75),
-                            .init(color: Color.white.opacity(viewModel.isOpen ? 0.18 : (isLiveActivityActive ? 0.12 : 0)), location: 1.0)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    ),
-                    lineWidth: 1
-                )
+                // Luminous Liquid Glass Caustic Rim - only shown when open!
+                Group {
+                    if viewModel.isOpen {
+                        // Ambient caustic optical bloom along the bottom squircle
+                        shape.stroke(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: Color.clear, location: 0.0),
+                                    .init(color: Color.clear, location: 0.65),
+                                    .init(color: Color(red: 1.0, green: 0.85, blue: 0.70).opacity(0.35), location: 0.94),
+                                    .init(color: Color.white.opacity(0.55), location: 1.0)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                            lineWidth: 3.5
+                        )
+                        .blur(radius: 2)
+
+                        // Razor-sharp specular caustic stroke
+                        shape.stroke(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: Color.white.opacity(0.32), location: 0.0),      // Top specular rim
+                                    .init(color: Color.white.opacity(0.14), location: 0.25),     // Upper sides
+                                    .init(color: Color.white.opacity(0.18), location: 0.70),     // Lower sides
+                                    .init(color: Color(red: 1.0, green: 0.90, blue: 0.80).opacity(0.70), location: 0.93), // Radiant caustic light
+                                    .init(color: Color.white.opacity(0.90), location: 1.0)       // Bottom caustic focus
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                            lineWidth: 1.2
+                        )
+                    }
+                }
             )
             .shadow(
-                color: showPanelShadow ? Color.black.opacity(viewModel.isOpen ? 0.35 : (isLiveActivityActive ? 0.20 : 0)) : Color.clear,
-                radius: viewModel.isOpen ? 20 : 6,
+                color: (showPanelShadow && viewModel.isOpen) ? Color.black.opacity(0.35) : Color.clear,
+                radius: 20,
                 x: 0,
-                y: viewModel.isOpen ? 8 : 2
+                y: 8
             )
             .position(x: silhouetteCenterX, y: silhouetteHeight / 2)
             .opacity((!viewModel.isOpen && !isLiveActivityActive && !viewModel.hasNotch) ? 0 : 1)
