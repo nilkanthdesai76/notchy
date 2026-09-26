@@ -63,7 +63,8 @@ final class NotchViewModel: ObservableObject {
 
     // MARK: - Horizontal Paging Navigation
     func advancePage() {
-        if selectedPage < 2 {
+        let maxPage = max(0, PageLayoutManager.shared.activePages.count - 1)
+        if selectedPage < maxPage {
             selectedPage += 1
         }
     }
@@ -75,7 +76,8 @@ final class NotchViewModel: ObservableObject {
     }
 
     func selectPage(_ page: Int) {
-        guard page >= 0, page <= 2 else { return }
+        let maxPage = max(0, PageLayoutManager.shared.activePages.count - 1)
+        guard page >= 0, page <= maxPage else { return }
         selectedPage = page
     }
 }

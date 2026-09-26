@@ -106,6 +106,12 @@ final class PageLayoutManager: ObservableObject {
     @Published var pages: [PageConfig] = []
     @Published var unassigned: [NotchyModuleID] = []
 
+    /// Active pages containing at least one enabled module.
+    /// Pages with all modules disabled/unassigned are completely omitted.
+    var activePages: [PageConfig] {
+        pages.filter { !$0.modules.isEmpty }
+    }
+
     private let storageKey = "notchy_page_layouts_v2"
 
     init() {

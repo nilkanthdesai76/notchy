@@ -361,13 +361,13 @@ private struct NotchExpandedContent: View {
     @ObservedObject var viewModel: NotchViewModel
     @ObservedObject private var stats = SystemStatsManager.shared
     @ObservedObject private var layout = PageLayoutManager.shared
-    @Namespace private var tabAnimation
 
     var body: some View {
         let pageWidth = viewModel.openWidth - 48
+        let activePages = layout.activePages
 
         VStack(spacing: 10) {
-            // Header: Date/Time + Switcher + Settings & Layout buttons
+            // Header: Date/Time + Settings Button (clean & spacious, no tabs above, no quit/reorder)
             HStack(alignment: .center, spacing: 0) {
                 // Clock / Date
                 VStack(alignment: .leading, spacing: 1) {
@@ -382,72 +382,46 @@ private struct NotchExpandedContent: View {
 
                 Spacer()
 
-                // Dynamic Segment Switcher Pill
-                pageSwitcher
-
-                Spacer()
-
-                // Actions: Grouped Liquid Glass Capsule for Settings, Layout, Quit
-                HStack(spacing: 4) {
-                    NotchIconButton(systemName: "square.grid.3x1.below.line.grid.1x2", fontSize: 10) {
-                        SettingsWindowController.shared.show()
-                    }
-                    .help("Customize Pages & Modules")
-
-                    NotchIconButton(systemName: "gearshape.fill", fontSize: 10) {
-                        SettingsWindowController.shared.show()
-                    }
-                    .help("Settings")
-
-                    NotchIconButton(systemName: "power", fontSize: 10) {
-                        NSApplication.shared.terminate(nil)
-                    }
-                    .help("Quit Notchy")
+                // Action: Single clean Settings button in top right
+                NotchIconButton(systemName: "gearshape.fill", fontSize: 11) {
+                    SettingsWindowController.shared.show()
                 }
-                .padding(2.5)
-                .liquidGlassCapsule()
-                .frame(width: 105, alignment: .trailing)
+                .help("Settings")
             }
 
-            // Dynamic Smooth Horizontal Carousel
-            HStack(alignment: .top, spacing: 0) {
-                ForEach(layout.pages) { page in
-                    renderDynamicPage(page: page, width: pageWidth)
-                        .frame(width: pageWidth, height: 165)
+            // Dynamic Smooth Horizontal Carousel (omits empty pages)
+            if activePages.isEmpty {
+                VStack(spacing: 8) {
+                    Spacer()
+                    Image(systemName: "square.grid.2x2")
+                        .font(.system(size: 22))
+                        .foregroundStyle(.white.opacity(0.2))
+                    Text("No Active Modules")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.5))
+                    Button("Customize in Settings") {
+                        SettingsWindowController.shared.show()
+                    }
+                    .controlSize(.small)
+                    Spacer()
                 }
-            }
-            .frame(width: pageWidth, alignment: .leading)
-            .offset(x: -CGFloat(viewModel.selectedPage) * pageWidth)
-            .clipped()
-            .animation(.spring(response: 0.36, dampingFraction: 0.82), value: viewModel.selectedPage)
-
-            // Footer: Page Dots + Shortcuts hint + Battery
-            HStack {
-                HStack(spacing: 5) {
-                    ForEach(0..<layout.pages.count, id: \.self) { page in
-                        Circle()
-                            .fill(viewModel.selectedPage == page ? Color.white : Color.white.opacity(0.2))
-                            .frame(width: 5, height: 5)
-                            .onTapGesture {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                    viewModel.selectPage(page)
-                                }
-                            }
+                .frame(width: pageWidth, height: 165)
+            } else {
+                HStack(alignment: .top, spacing: 0) {
+                    ForEach(activePages) { page in
+                        renderDynamicPage(page: page, width: pageWidth)
+                            .frame(width: pageWidth, height: 165)
                     }
                 }
+                .frame(width: pageWidth, alignment: .leading)
+                .offset(x: -CGFloat(min(viewModel.selectedPage, max(0, activePages.count - 1))) * pageWidth)
+                .clipped()
+                .animation(.spring(response: 0.36, dampingFraction: 0.82), value: viewModel.selectedPage)
+            }
 
-                Spacer()
-
-                let p1 = layout.pages.indices.contains(0) ? layout.pages[0].title : "P1"
-                let p2 = layout.pages.indices.contains(1) ? layout.pages[1].title : "P2"
-                let p3 = layout.pages.indices.contains(2) ? layout.pages[2].title : "P3"
-                Text("⌘1 \(p1) • ⌘2 \(p2) • ⌘3 \(p3)")
-                    .font(.system(size: 8.5, weight: .regular))
-                    .foregroundStyle(.white.opacity(0.35))
-                    .lineLimit(1)
-
-                Spacer()
-
+            // Footer: Battery + Page Dots + Small Navigation Arrows at Bottom Right Corner
+            HStack(alignment: .center, spacing: 10) {
+                // Battery
                 HStack(spacing: 4) {
                     Image(systemName: stats.isCharging ? "battery.100.bolt" : "battery.75")
                         .font(.system(size: 9))
@@ -456,6 +430,65 @@ private struct NotchExpandedContent: View {
                         .font(.system(size: 8.5, weight: .medium, design: .monospaced))
                         .foregroundStyle(.white.opacity(0.6))
                 }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(Color.white.opacity(0.04), in: Capsule())
+
+                Spacer()
+
+                // Page Dots Indicator (if more than 1 active page)
+                if activePages.count > 1 {
+                    HStack(spacing: 5) {
+                        ForEach(0..<activePages.count, id: \.self) { index in
+                            Circle()
+                                .fill(viewModel.selectedPage == index ? Color.white : Color.white.opacity(0.25))
+                                .frame(width: viewModel.selectedPage == index ? 6 : 4, height: viewModel.selectedPage == index ? 6 : 4)
+                                .animation(.spring(response: 0.25), value: viewModel.selectedPage)
+                                .onTapGesture {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                        viewModel.selectPage(index)
+                                    }
+                                }
+                        }
+                    }
+                }
+
+                Spacer()
+
+                // Small Next / Back arrow buttons at the bottom right corner
+                if activePages.count > 1 {
+                    HStack(spacing: 3) {
+                        Button {
+                            withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                                viewModel.rewindPage()
+                            }
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(viewModel.selectedPage > 0 ? Color.white.opacity(0.9) : Color.white.opacity(0.2))
+                                .frame(width: 22, height: 20)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(viewModel.selectedPage <= 0)
+                        .help("Previous Page (⌘←)")
+
+                        Button {
+                            withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                                viewModel.advancePage()
+                            }
+                        } label: {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(viewModel.selectedPage < activePages.count - 1 ? Color.white.opacity(0.9) : Color.white.opacity(0.2))
+                                .frame(width: 22, height: 20)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(viewModel.selectedPage >= activePages.count - 1)
+                        .help("Next Page (⌘→)")
+                    }
+                    .padding(2.5)
+                    .liquidGlassCapsule()
+                }
             }
             .padding(.horizontal, 4)
         }
@@ -463,61 +496,6 @@ private struct NotchExpandedContent: View {
         .padding(.top, 14)
         .padding(.bottom, 12)
         .frame(width: viewModel.openWidth, height: viewModel.contentHeight, alignment: .top)
-    }
-
-    // MARK: - Dynamic Switcher Tabs
-    private var pageSwitcher: some View {
-        HStack(spacing: 3) {
-            ForEach(Array(layout.pages.enumerated()), id: \.element.id) { index, page in
-                let icon = page.modules.first?.iconName ?? "square.grid.2x2"
-                switcherTab(title: page.title, icon: icon, index: index)
-            }
-        }
-        .padding(3)
-        .liquidGlassCapsule()
-    }
-
-    private func switcherTab(title: String, icon: String, index: Int) -> some View {
-        let isSelected = viewModel.selectedPage == index
-        return Button {
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
-                viewModel.selectPage(index)
-            }
-        } label: {
-            HStack(spacing: 4.5) {
-                Image(systemName: icon)
-                    .font(.system(size: 9.5, weight: .semibold))
-                Text(title)
-                    .font(.system(size: 9.5, weight: isSelected ? .bold : .medium))
-            }
-            .foregroundStyle(isSelected ? .white : .white.opacity(0.55))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4.5)
-            .background {
-                if isSelected {
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.24), Color.white.opacity(0.14)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .overlay(
-                            Capsule().strokeBorder(
-                                LinearGradient(
-                                    colors: [Color.white.opacity(0.40), Color.white.opacity(0.08)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 0.75
-                            )
-                        )
-                        .matchedGeometryEffect(id: "activeTab", in: tabAnimation)
-                }
-            }
-        }
-        .buttonStyle(.plain)
     }
 
     // MARK: - Dynamic Page Rendering
