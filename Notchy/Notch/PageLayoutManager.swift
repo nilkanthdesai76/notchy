@@ -2,8 +2,8 @@
 //  PageLayoutManager.swift
 //  Notchy
 //
-//  Manages the customizable module layout across the 3 notch carousel pages.
-//  Supports full drag-and-drop reordering, inter-page transfer, and persistence.
+//  Manages the customizable module layout across dynamic notch carousel pages.
+//  Supports dynamic page adding/removing, drag-and-drop reordering, and persistence.
 //
 
 import Combine
@@ -19,7 +19,8 @@ enum NotchyModuleID: String, CaseIterable, Identifiable, Codable {
     case shelf = "shelf"
     case stats = "stats"
     case aiUsage = "aiUsage"
-    case security = "security"
+    case otp = "otp"
+    case timer = "timer"
 
     var id: String { rawValue }
 
@@ -29,9 +30,10 @@ enum NotchyModuleID: String, CaseIterable, Identifiable, Codable {
         case .clipboard: return "Clipboard History"
         case .camera: return "Webcam Mirror"
         case .shelf: return "Shelf & AirDrop"
-        case .stats: return "Stats & Tools"
+        case .stats: return "System Stats"
         case .aiUsage: return "AI Token Usage"
-        case .security: return "2FA & Focus Timer"
+        case .otp: return "2FA Authenticator"
+        case .timer: return "Focus Timer"
         }
     }
 
@@ -43,7 +45,8 @@ enum NotchyModuleID: String, CaseIterable, Identifiable, Codable {
         case .shelf: return "Shelf"
         case .stats: return "Stats"
         case .aiUsage: return "AI"
-        case .security: return "2FA/Timer"
+        case .otp: return "2FA"
+        case .timer: return "Timer"
         }
     }
 
@@ -55,7 +58,8 @@ enum NotchyModuleID: String, CaseIterable, Identifiable, Codable {
         case .shelf: return "tray.and.arrow.down.fill"
         case .stats: return "cpu"
         case .aiUsage: return "sparkles"
-        case .security: return "lock.shield.fill"
+        case .otp: return "key.fill"
+        case .timer: return "timer"
         }
     }
 
@@ -67,7 +71,8 @@ enum NotchyModuleID: String, CaseIterable, Identifiable, Codable {
         case .shelf: return .indigo
         case .stats: return .orange
         case .aiUsage: return .cyan
-        case .security: return .purple
+        case .otp: return .purple
+        case .timer: return .red
         }
     }
 
@@ -77,9 +82,10 @@ enum NotchyModuleID: String, CaseIterable, Identifiable, Codable {
         case .clipboard: return "Recent clipboard history with 1-click paste"
         case .camera: return "Portrait rounded rectangle selfie mirror"
         case .shelf: return "File staging area and direct AirDrop"
-        case .stats: return "CPU/RAM/Net stats + Caffeinate & Eyedropper"
-        case .aiUsage: return "Antigravity, Kimi, OpenCode token metrics"
-        case .security: return "2FA OTP codes and Pomodoro focus timer"
+        case .stats: return "Live CPU, RAM, Network & Quick Tools"
+        case .aiUsage: return "Antigravity, Claude, Kimi token metrics"
+        case .otp: return "2FA TOTP accounts with countdown rings"
+        case .timer: return "Pomodoro & quick interval focus timer"
         }
     }
 }
@@ -87,8 +93,7 @@ enum NotchyModuleID: String, CaseIterable, Identifiable, Codable {
 // MARK: - Page Configuration
 
 struct PageConfig: Identifiable, Codable, Equatable {
-    let id: Int
-    var title: String
+    var id: Int
     var modules: [NotchyModuleID]
 }
 
@@ -112,7 +117,7 @@ final class PageLayoutManager: ObservableObject {
         pages.filter { !$0.modules.isEmpty }
     }
 
-    private let storageKey = "notchy_page_layouts_v2"
+    private let storageKey = "notchy_page_layouts_v3"
 
     init() {
         loadLayout()
@@ -121,7 +126,7 @@ final class PageLayoutManager: ObservableObject {
     func loadLayout() {
         if let data = UserDefaults.standard.data(forKey: storageKey),
            let saved = try? JSONDecoder().decode(SavedLayout.self, from: data),
-           saved.pages.count == 3 {
+           !saved.pages.isEmpty {
             self.pages = saved.pages
             self.unassigned = saved.unassigned
         } else {
@@ -138,11 +143,31 @@ final class PageLayoutManager: ObservableObject {
 
     func resetToDefaults() {
         pages = [
-            PageConfig(id: 0, title: "Studio", modules: [.media, .clipboard, .camera]),
-            PageConfig(id: 1, title: "Shelf & Stats", modules: [.shelf, .stats]),
-            PageConfig(id: 2, title: "AI & 2FA", modules: [.aiUsage, .security])
+            PageConfig(id: 0, modules: [.media, .clipboard, .camera]),
+            PageConfig(id: 1, modules: [.shelf, .stats]),
+            PageConfig(id: 2, modules: [.aiUsage, .otp, .timer])
         ]
         unassigned = []
+        saveLayout()
+    }
+
+    // MARK: - Dynamic Page Management
+
+    func addPage() {
+        let nextId = (pages.map(\.id).max() ?? -1) + 1
+        pages.append(PageConfig(id: nextId, modules: []))
+        saveLayout()
+    }
+
+    func removePage(at index: Int) {
+        guard pages.count > 1, index >= 0 && index < pages.count else { return }
+        let removedModules = pages[index].modules
+        unassigned.append(contentsOf: removedModules)
+        pages.remove(at: index)
+        // Re-index pages
+        for i in 0..<pages.count {
+            pages[i].id = i
+        }
         saveLayout()
     }
 
@@ -188,12 +213,6 @@ final class PageLayoutManager: ObservableObject {
             // Move to next page
             moveModule(module, toPageIndex: pageIndex + 1, atIndex: 0)
         }
-    }
-
-    func updatePageTitle(pageIndex: Int, newTitle: String) {
-        guard pageIndex >= 0 && pageIndex < pages.count else { return }
-        pages[pageIndex].title = newTitle
-        saveLayout()
     }
 
     private func removeModuleFromAll(_ module: NotchyModuleID) {

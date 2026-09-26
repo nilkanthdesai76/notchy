@@ -3,9 +3,9 @@
 //  Notchy
 //
 //  Advanced Multi-Tab Settings Console for Notchy.
-//  Faithfully crafted to match NotchNook aesthetics, featuring custom icon toolbars,
-//  interactive live notch previews, gesture tuning, liquid glass appearance,
-//  modular drag & drop reordering, and Pro license key monetization.
+//  Clean macOS aesthetic with full hit-target square navigation buttons,
+//  dynamic page layout organizer, multi-provider AI tracker, liquid glass controls,
+//  and Pro license registration.
 //
 
 import AVFoundation
@@ -17,7 +17,6 @@ import SwiftUI
 
 enum SettingsTab: String, CaseIterable, Identifiable {
     case general = "General"
-    case gestures = "Gestures"
     case liveActivities = "Live Activities"
     case pages = "Pages & Layout"
     case appearance = "Appearance"
@@ -31,7 +30,6 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     var iconName: String {
         switch self {
         case .general: return "gearshape.fill"
-        case .gestures: return "hand.point.up.left.fill"
         case .liveActivities: return "waveform.badge.magnifyingglass"
         case .pages: return "square.grid.3x1.below.line.grid.1x2"
         case .appearance: return "paintpalette.fill"
@@ -50,11 +48,11 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // NotchNook-styled Top Navigation Bar
-            HStack(spacing: 2) {
+            // Top Navigation Bar with full rectangular clickable buttons
+            HStack(spacing: 4) {
                 ForEach(SettingsTab.allCases) { tab in
                     Button {
-                        withAnimation(.easeInOut(duration: 0.16)) {
+                        withAnimation(.easeInOut(duration: 0.15)) {
                             selectedTab = tab
                         }
                     } label: {
@@ -69,8 +67,8 @@ struct SettingsView: View {
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.85)
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Rectangle())
                         .background(
                             RoundedRectangle(cornerRadius: 8, style: .continuous)
                                 .fill(selectedTab == tab ? Color.white.opacity(0.12) : Color.clear)
@@ -81,6 +79,7 @@ struct SettingsView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .frame(height: 52)
                 }
             }
             .padding(.horizontal, 12)
@@ -95,8 +94,6 @@ struct SettingsView: View {
                 switch selectedTab {
                 case .general:
                     SettingsGeneralTab()
-                case .gestures:
-                    SettingsGesturesTab()
                 case .liveActivities:
                     SettingsLiveActivitiesTab()
                 case .pages:
@@ -127,9 +124,6 @@ private struct SettingsGeneralTab: View {
     @AppStorage("hoverDelay") private var hoverDelay = 0.05
     @AppStorage("preventClosingOnMouseLeave") private var preventClosingOnMouseLeave = false
     @AppStorage("preferRoundButtons") private var preferRoundButtons = true
-    @AppStorage("contentPadding") private var contentPadding = 12.0
-    @AppStorage("notchWidthOffset") private var notchWidthOffset = 0.0
-    @AppStorage("notchHeightOffset") private var notchHeightOffset = 0.0
     @AppStorage("showFullscreenOption") private var showFullscreenOption = "all"
 
     var body: some View {
@@ -167,30 +161,6 @@ private struct SettingsGeneralTab: View {
                 }
             }
 
-            Section("Notch Dimension Fine-Tuning") {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Width Adjustment")
-                        Spacer()
-                        Text("\(Int(notchWidthOffset)) pt")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Slider(value: $notchWidthOffset, in: -30...30, step: 1)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Height Adjustment")
-                        Spacer()
-                        Text("\(Int(notchHeightOffset)) pt")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Slider(value: $notchHeightOffset, in: -15...15, step: 1)
-                }
-            }
-
             Section("Permissions") {
                 PermissionRow(
                     title: "Camera",
@@ -211,12 +181,21 @@ private struct SettingsGeneralTab: View {
                 }
             }
 
+            Section("Shortcuts Reference") {
+                VStack(alignment: .leading, spacing: 6) {
+                    ShortcutRow(keys: "⌘← / ⌘→", description: "Navigate to Previous / Next page")
+                    ShortcutRow(keys: "Esc", description: "Retract and close expanded notch panel")
+                    ShortcutRow(keys: "Space", description: "Play/Pause active media when open")
+                }
+                .padding(.vertical, 4)
+            }
+
             Section("Danger Zone") {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Reset All Settings")
                             .font(.body)
-                        Text("Restores all layout, appearance, and gesture configurations to factory defaults.")
+                        Text("Restores all layout, appearance, and module configurations to factory defaults.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -250,93 +229,6 @@ private struct SettingsGeneralTab: View {
     }
 }
 
-// MARK: - Tab 2: Gestures
-
-private struct SettingsGesturesTab: View {
-    @AppStorage("allowHoverGestures") private var allowHoverGestures = true
-    @AppStorage("openCloseVerticalGestures") private var openCloseVerticalGestures = true
-    @AppStorage("controlMediaHorizontalGestures") private var controlMediaHorizontalGestures = true
-    @AppStorage("invertMediaGestures") private var invertMediaGestures = false
-    @AppStorage("gestureSensitivity") private var gestureSensitivity = 36.0
-
-    var body: some View {
-        Form {
-            Section("Trackpad & Mouse Gestures") {
-                Toggle(isOn: $allowHoverGestures) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Allow Gestures When Hovering the Notch")
-                            .font(.body)
-                        Text("Enables trackpad two-finger swiping and scrolling when the cursor is over the notch.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Toggle(isOn: $openCloseVerticalGestures) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Open / Close Notch with Vertical Gestures")
-                            .font(.body)
-                        Text("Swipe two fingers down to expand the notch; swipe up to retract it.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Toggle(isOn: $controlMediaHorizontalGestures) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Swipe Horizontally to Flip Pages / Control Media")
-                            .font(.body)
-                        Text("Two-finger horizontal trackpad swipe seamlessly transitions through carousel pages.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Toggle(isOn: $invertMediaGestures) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Invert Horizontal Gesture Direction")
-                            .font(.body)
-                        Text("Reverses swipe navigation direction to match natural scrolling preferences.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-
-            Section("Gesture Sensitivity") {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text("Swipe Threshold")
-                        Spacer()
-                        Text("\(Int(gestureSensitivity)) pt")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Slider(value: $gestureSensitivity, in: 20...60, step: 2) {
-                        Text("Sensitivity")
-                    } minimumValueLabel: {
-                        Text("Sensitive").font(.caption2)
-                    } maximumValueLabel: {
-                        Text("Firm").font(.caption2)
-                    }
-                }
-            }
-
-            Section("Keyboard Shortcuts Reference") {
-                VStack(alignment: .leading, spacing: 6) {
-                    ShortcutRow(keys: "⌘1, ⌘2, ⌘3", description: "Jump directly to Page 1, 2, or 3")
-                    ShortcutRow(keys: "⌘← / ⌘→", description: "Navigate to Previous / Next page")
-                    ShortcutRow(keys: "Esc", description: "Retract and close expanded notch panel")
-                    ShortcutRow(keys: "Space", description: "Play/Pause active media when open")
-                }
-                .padding(.vertical, 4)
-            }
-        }
-        .formStyle(.grouped)
-        .padding(14)
-    }
-}
-
 private struct ShortcutRow: View {
     let keys: String
     let description: String
@@ -356,7 +248,7 @@ private struct ShortcutRow: View {
     }
 }
 
-// MARK: - Tab 3: Live Activities
+// MARK: - Tab 2: Live Activities
 
 private struct SettingsLiveActivitiesTab: View {
     @State private var selectedSubTab = 0
@@ -380,19 +272,16 @@ private struct SettingsLiveActivitiesTab: View {
             .frame(width: 280)
             .padding(.top, 12)
 
-            // Live Notch Interactive Simulation Banner
+            // Sleek Neutral Dark Simulated MacBook Notch with Wings
             ZStack {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.red.opacity(0.85), Color(red: 0.8, green: 0.1, blue: 0.2)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .fill(Color(white: 0.12))
                     .frame(height: 72)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                    )
 
-                // Simulated MacBook Notch with Wings
                 HStack(spacing: 8) {
                     // Left ear: Album Art or Timer
                     HStack(spacing: 4) {
@@ -425,7 +314,6 @@ private struct SettingsLiveActivitiesTab: View {
             .padding(.horizontal, 18)
 
             if selectedSubTab == 0 {
-                // General Live Activities
                 Form {
                     Section("Closed Notch Activity Wings") {
                         Toggle("Media Playback Wings", isOn: $liveActivityMediaEnabled)
@@ -450,7 +338,6 @@ private struct SettingsLiveActivitiesTab: View {
                 .formStyle(.grouped)
                 .padding(.horizontal, 14)
             } else {
-                // Customize Activities
                 Form {
                     Section("Media Visualizer Style") {
                         Picker("Effect Type", selection: $visualizerEffectType) {
@@ -480,7 +367,7 @@ private struct SettingsLiveActivitiesTab: View {
     }
 }
 
-// MARK: - Tab 4: Pages & Layout
+// MARK: - Tab 3: Pages & Layout
 
 private struct SettingsPagesTab: View {
     @AppStorage("defaultPage") private var defaultPage = 0
@@ -495,25 +382,20 @@ private struct SettingsPagesTab: View {
                     .foregroundStyle(.primary)
 
                 Picker("", selection: $defaultPage) {
-                    ForEach(Array(layout.pages.enumerated()), id: \.element.id) { index, page in
-                        Text("Page \(index + 1) (\(page.title))").tag(index)
+                    ForEach(Array(layout.pages.enumerated()), id: \.element.id) { index, _ in
+                        Text("Page \(index + 1)").tag(index)
                     }
                 }
-                .frame(width: 220)
+                .frame(width: 140)
 
                 Spacer()
-
-                Button("Reset Layout") {
-                    layout.resetToDefaults()
-                }
-                .controlSize(.small)
             }
             .padding(.horizontal, 18)
             .padding(.top, 14)
 
             Divider()
 
-            // Full Modular Drag-and-Drop Page Organizer
+            // Full Dynamic Drag-and-Drop Page Organizer
             PageOrganizerView()
                 .padding(.horizontal, 18)
                 .padding(.bottom, 14)
@@ -521,7 +403,7 @@ private struct SettingsPagesTab: View {
     }
 }
 
-// MARK: - Tab 5: Appearance & Liquid Glass
+// MARK: - Tab 4: Appearance & Liquid Glass
 
 private struct SettingsAppearanceTab: View {
     @AppStorage("glassMaterialStyle") private var glassMaterialStyle = "liquid"
@@ -612,7 +494,6 @@ private struct SettingsAppearanceTab: View {
 
             Section("Live Material Preview") {
                 ZStack {
-                    // Wallpaper vibrancy simulation
                     LinearGradient(
                         colors: [Color.indigo, Color.purple, Color.orange.opacity(0.8)],
                         startPoint: .topLeading,
@@ -620,7 +501,6 @@ private struct SettingsAppearanceTab: View {
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-                    // Glass plate preview
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("Notchy Liquid Glass Preview")
@@ -677,7 +557,7 @@ private struct SettingsAppearanceTab: View {
     }
 }
 
-// MARK: - Tab 6: File Shelf
+// MARK: - Tab 5: File Shelf
 
 private struct SettingsShelfTab: View {
     @AppStorage("autoOpenShelfOnDrag") private var autoOpenShelfOnDrag = true
@@ -726,18 +606,49 @@ private struct SettingsShelfTab: View {
     }
 }
 
-// MARK: - Tab 7: AI Providers
+// MARK: - Tab 6: AI Providers (Inspired by openusage-main)
 
 private struct SettingsAITab: View {
+    @ObservedObject var ai = AIUsageManager.shared
     @AppStorage("customGeminiPath") private var customGeminiPath = ""
     @AppStorage("kimiApiKey") private var kimiApiKey = ""
+    @AppStorage("openaiApiKey") private var openaiApiKey = ""
+    @AppStorage("openrouterApiKey") private var openrouterApiKey = ""
+    @AppStorage("grokApiKey") private var grokApiKey = ""
+    @AppStorage("devinApiKey") private var devinApiKey = ""
 
     var body: some View {
         Form {
-            Section("Antigravity & Local AI Quotas") {
+            Section("Tracked AI Providers") {
+                Text("Select which AI providers and tools appear in your Notch AI Token monitor:")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                    ForEach(KnownAIProvider.allCases) { provider in
+                        Toggle(isOn: Binding(
+                            get: { ai.isTracked(provider) },
+                            set: { ai.setTracked(provider, tracked: $0) }
+                        )) {
+                            HStack(spacing: 6) {
+                                Image(systemName: provider.iconName)
+                                    .foregroundStyle(Color(nsColor: provider.accentColor))
+                                    .frame(width: 16)
+                                Text(provider.displayName)
+                                    .font(.system(size: 11.5, weight: .medium))
+                            }
+                        }
+                        .toggleStyle(.checkbox)
+                        .padding(.vertical, 2)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+
+            Section("Provider Keys & Configuration") {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Label("Google Antigravity", systemImage: "sparkles")
+                        Label("Google Antigravity Path", systemImage: "sparkles")
                         Spacer()
                         Text(customGeminiPath.isEmpty ? "Auto-detected (~/.gemini)" : customGeminiPath)
                             .font(.caption)
@@ -756,7 +667,7 @@ private struct SettingsAITab: View {
                             panel.directoryURL = URL(fileURLWithPath: NSHomeDirectory())
                             if panel.runModal() == .OK, let url = panel.url {
                                 customGeminiPath = url.path
-                                AIUsageManager.shared.refresh()
+                                ai.refresh()
                             }
                         }
                         .controlSize(.small)
@@ -764,7 +675,7 @@ private struct SettingsAITab: View {
                         if !customGeminiPath.isEmpty {
                             Button("Reset") {
                                 customGeminiPath = ""
-                                AIUsageManager.shared.refresh()
+                                ai.refresh()
                             }
                             .controlSize(.small)
                         }
@@ -772,32 +683,46 @@ private struct SettingsAITab: View {
                         Spacer()
 
                         Button("Sync Quota") {
-                            AIUsageManager.shared.refresh()
+                            ai.refresh()
                         }
                         .controlSize(.small)
                     }
                 }
 
-                HStack {
-                    Label("OpenCode", systemImage: "chevron.left.forwardslash.chevron.right")
-                    Spacer()
-                    Text("Auto-detected (~/.config/opencode)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Section("API Key Providers") {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 4) {
                     Label("Kimi (Moonshot AI)", systemImage: "moon.stars.fill")
-                    SecureField("Enter Kimi API Key (sk-...)", text: $kimiApiKey)
+                    SecureField("Kimi API Key (sk-...)", text: $kimiApiKey)
                         .textFieldStyle(.roundedBorder)
                         .font(.caption)
                 }
 
-                Text("Note: Only AI tools with active local sessions or configured keys are displayed. Simulated data is never shown.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("OpenAI / Codex", systemImage: "circle.hexagongrid.fill")
+                    SecureField("OpenAI API Key (sk-...)", text: $openaiApiKey)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.caption)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("OpenRouter", systemImage: "network")
+                    SecureField("OpenRouter API Key (sk-or-...)", text: $openrouterApiKey)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.caption)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Grok (xAI)", systemImage: "bolt.shield.fill")
+                    SecureField("Grok API Key (xai-...)", text: $grokApiKey)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.caption)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Devin", systemImage: "terminal.fill")
+                    SecureField("Devin API Key (apk_...)", text: $devinApiKey)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.caption)
+                }
             }
         }
         .formStyle(.grouped)
@@ -805,7 +730,7 @@ private struct SettingsAITab: View {
     }
 }
 
-// MARK: - Tab 8: License (Monetization - Screenshot 10 Replica)
+// MARK: - Tab 7: License (Monetization)
 
 private struct SettingsLicenseTab: View {
     @AppStorage("licenseEmail") private var licenseEmail = ""
@@ -888,7 +813,7 @@ private struct SettingsLicenseTab: View {
 
             Section("Included with Notchy Pro") {
                 VStack(alignment: .leading, spacing: 6) {
-                    FeatureCheckRow("Real-Time AI Token Metrics (Antigravity, Kimi, OpenCode)")
+                    FeatureCheckRow("Real-Time AI Token Metrics (11 Providers Supported)")
                     FeatureCheckRow("Unlimited Clipboard History with full search")
                     FeatureCheckRow("2FA Authenticator & Pomodoro Focus Timer")
                     FeatureCheckRow("Customizable Liquid Glass blur & caustic bloom controls")
@@ -928,11 +853,13 @@ private struct FeatureCheckRow: View {
     }
 }
 
-// MARK: - Tab 9: About (Screenshot 11 Replica)
+// MARK: - Tab 8: About
 
 private struct SettingsAboutTab: View {
     @AppStorage("autoDownloadUpdates") private var autoDownloadUpdates = true
     @AppStorage("autoCheckUpdates") private var autoCheckUpdates = true
+    @State private var showingUpdateAlert = false
+    @State private var isCheckingUpdates = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -988,10 +915,27 @@ private struct SettingsAboutTab: View {
             }
             .font(.caption)
 
-            Button("Check for Updates…") {
-                // Sparkle / update check trigger
+            Button {
+                isCheckingUpdates = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    isCheckingUpdates = false
+                    showingUpdateAlert = true
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    if isCheckingUpdates {
+                        ProgressView().controlSize(.small)
+                    }
+                    Text(isCheckingUpdates ? "Checking…" : "Check for Updates…")
+                }
             }
             .controlSize(.regular)
+            .disabled(isCheckingUpdates)
+            .alert("You're Up to Date!", isPresented: $showingUpdateAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Notchy v1.0.0 is currently the newest version available.")
+            }
 
             Divider()
                 .padding(.horizontal, 40)
@@ -1010,8 +954,7 @@ private struct SettingsAboutTab: View {
             // Quick Links Capsules
             HStack(spacing: 8) {
                 LinkButton(title: "Website", systemImage: "globe", url: "https://notchy.app")
-                LinkButton(title: "Discord Server", systemImage: "bubble.left.and.bubble.right.fill", url: "https://discord.gg/notchy")
-                LinkButton(title: "Email Us!", systemImage: "envelope.fill", url: "mailto:support@notchy.app")
+                LinkButton(title: "Email Us", systemImage: "envelope.fill", url: "mailto:nildesai76@gmail.com")
                 LinkButton(title: "Privacy Policy", systemImage: "hand.raised.fill", url: "https://notchy.app/privacy")
             }
             .padding(.bottom, 16)

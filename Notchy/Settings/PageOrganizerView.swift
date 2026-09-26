@@ -3,8 +3,8 @@
 //  Notchy
 //
 //  Interactive visual drag-and-drop page reorganizer.
-//  Allows the user to freely reorganize modules across Page 1, Page 2, Page 3,
-//  and an unassigned drawer with live drag-and-drop and arrow navigation.
+//  Allows dynamic addition and removal of pages, smooth reordering of modules,
+//  and an unassigned shelf drawer with zero redundant page names.
 //
 
 import Combine
@@ -17,39 +17,54 @@ struct PageOrganizerView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            // Header: Title + Reset Button
+            // Header: Title + Action Buttons
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("3-Page Layout Customizer")
+                    Text("Page Layout Customizer")
                         .font(.headline)
                         .foregroundStyle(.primary)
-                    Text("Drag modules between pages or use arrow buttons to customize your Notch experience.")
+                    Text("Organize modules across pages, add or delete pages, or drag cards to the shelf below.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
-                Button("Reset to Defaults") {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                        layout.resetToDefaults()
+                HStack(spacing: 8) {
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            layout.addPage()
+                        }
+                    } label: {
+                        Label("Add Page", systemImage: "plus")
                     }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+
+                    Button("Reset to Defaults") {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            layout.resetToDefaults()
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
             }
 
-            // 3-Page Columns Canvas
-            HStack(alignment: .top, spacing: 10) {
-                ForEach(0..<3, id: \.self) { pageIndex in
-                    if pageIndex < layout.pages.count {
+            // Dynamic Multi-Page Grid / Columns Canvas
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 12) {
+                    ForEach(Array(layout.pages.enumerated()), id: \.element.id) { pageIndex, page in
                         PageDropColumn(
                             pageIndex: pageIndex,
-                            page: layout.pages[pageIndex],
+                            page: page,
+                            canDelete: layout.pages.count > 1,
                             draggingModule: $draggingModule
                         )
+                        .frame(width: 210)
                     }
                 }
+                .padding(.vertical, 2)
             }
 
             // Unassigned / Disabled Modules Shelf
@@ -78,32 +93,46 @@ struct PageOrganizerView: View {
 private struct PageDropColumn: View {
     let pageIndex: Int
     let page: PageConfig
+    let canDelete: Bool
     @Binding var draggingModule: NotchyModuleID?
     @ObservedObject var layout = PageLayoutManager.shared
     @State private var isTargeted = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Page Header
+            // Page Header (No Name/Title - Clean Number + Delete Button)
             HStack(spacing: 6) {
                 Text("\(pageIndex + 1)")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
-                    .frame(width: 18, height: 18)
-                    .background(Color.accentColor, in: Circle())
+                    .frame(width: 20, height: 20)
+                    .background(Color.cyan, in: Circle())
 
-                TextField("Page Title", text: Binding(
-                    get: { page.title },
-                    set: { layout.updatePageTitle(pageIndex: pageIndex, newTitle: $0) }
-                ))
-                .font(.system(size: 12, weight: .semibold))
-                .textFieldStyle(.plain)
+                Text("Page \(pageIndex + 1)")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.primary)
 
                 Spacer()
 
                 Text("\(page.modules.count) items")
-                    .font(.system(size: 9))
+                    .font(.system(size: 9.5))
                     .foregroundStyle(.secondary)
+
+                if canDelete {
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            layout.removePage(at: pageIndex)
+                        }
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 9.5))
+                            .foregroundStyle(.red.opacity(0.8))
+                            .frame(width: 18, height: 18)
+                            .background(Color.red.opacity(0.12), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Delete Page \(pageIndex + 1) (moves modules to drawer)")
+                }
             }
             .padding(.bottom, 2)
 
@@ -119,7 +148,7 @@ private struct PageDropColumn: View {
                             .foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity)
-                    .frame(height: 100)
+                    .frame(height: 120)
                     .background(
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
                             .strokeBorder(Color.secondary.opacity(0.25), style: StrokeStyle(lineWidth: 1, dash: [4]))
@@ -140,11 +169,11 @@ private struct PageDropColumn: View {
             .padding(6)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(isTargeted ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.04))
+                    .fill(isTargeted ? Color.cyan.opacity(0.12) : Color.secondary.opacity(0.04))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(isTargeted ? Color.accentColor : Color.secondary.opacity(0.15), lineWidth: 1)
+                    .strokeBorder(isTargeted ? Color.cyan : Color.secondary.opacity(0.15), lineWidth: 1)
             )
             .onDrop(of: [UTType.text.identifier], isTargeted: $isTargeted) { providers in
                 guard let provider = providers.first else { return false }
@@ -159,7 +188,6 @@ private struct PageDropColumn: View {
                 return true
             }
         }
-        .frame(maxWidth: .infinity)
     }
 }
 
@@ -290,8 +318,8 @@ private struct UnassignedShelfView: View {
                                     .font(.system(size: 10, weight: .medium))
 
                                 Menu {
-                                    ForEach(Array(layout.pages.enumerated()), id: \.element.id) { pIndex, page in
-                                        Button("Add to Page \(pIndex + 1) (\(page.title))") {
+                                    ForEach(Array(layout.pages.enumerated()), id: \.element.id) { pIndex, _ in
+                                        Button("Add to Page \(pIndex + 1)") {
                                             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                                                 layout.moveModule(module, toPageIndex: pIndex)
                                             }
@@ -329,11 +357,11 @@ private struct UnassignedShelfView: View {
         .padding(6)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(isTargeted ? Color.accentColor.opacity(0.1) : Color.clear)
+                .fill(isTargeted ? Color.cyan.opacity(0.1) : Color.clear)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(isTargeted ? Color.accentColor : Color.clear, lineWidth: 1)
+                .strokeBorder(isTargeted ? Color.cyan : Color.clear, lineWidth: 1)
         )
         .onDrop(of: [UTType.text.identifier], isTargeted: $isTargeted) { providers in
             guard let provider = providers.first else { return false }

@@ -512,7 +512,7 @@ private struct NotchPageView: View, Equatable {
                 Image(systemName: "plus.square.dashed")
                     .font(.system(size: 20))
                     .foregroundStyle(.white.opacity(0.25))
-                Text("\(page.title) is empty")
+                Text("Page \(page.id + 1) is empty")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.white.opacity(0.6))
                 Button("Customize in Settings") {
@@ -570,8 +570,10 @@ private struct NotchPageView: View, Equatable {
             StatsAndToolsView()
         case .aiUsage:
             AIUsageView()
-        case .security:
-            OTPAndTimerView()
+        case .otp:
+            OTPView()
+        case .timer:
+            TimerView()
         }
     }
 
