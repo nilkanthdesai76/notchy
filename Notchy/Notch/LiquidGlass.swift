@@ -9,6 +9,40 @@
 //
 
 import SwiftUI
+import AppKit
+
+// MARK: - Native macOS Vibrancy VisualEffectView
+
+public struct VisualEffectView: NSViewRepresentable {
+    public var material: NSVisualEffectView.Material
+    public var blendingMode: NSVisualEffectView.BlendingMode
+    public var state: NSVisualEffectView.State
+
+    public init(
+        material: NSVisualEffectView.Material = .hudWindow,
+        blendingMode: NSVisualEffectView.BlendingMode = .behindWindow,
+        state: NSVisualEffectView.State = .active
+    ) {
+        self.material = material
+        self.blendingMode = blendingMode
+        self.state = state
+    }
+
+    public func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = material
+        view.blendingMode = blendingMode
+        view.state = state
+        view.wantsLayer = true
+        return view
+    }
+
+    public func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.material = material
+        nsView.blendingMode = blendingMode
+        nsView.state = state
+    }
+}
 
 // MARK: - Liquid Glass Pod Modifier
 
@@ -26,16 +60,20 @@ struct LiquidGlassPodModifier: ViewModifier {
                         .fill(Color(white: 0.12))
                 } else {
                     ZStack {
-                        // Base optical glass material
+                        // Base optical glass material - semi-transparent so backdrop blur shows through
                         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .fill(.ultraThinMaterial.opacity(0.88))
+                            .fill(.ultraThinMaterial.opacity(0.55))
+
+                        // Subtle dark tint for card depth & contrast
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(Color.black.opacity(0.20))
 
                         // Ambient chromatic refraction if provided (e.g. from album art)
                         if let tint = ambientTint {
                             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                                 .fill(
                                     RadialGradient(
-                                        colors: [tint.opacity(0.20), tint.opacity(0.05), Color.clear],
+                                        colors: [tint.opacity(0.22), tint.opacity(0.06), Color.clear],
                                         center: .topLeading,
                                         startRadius: 10,
                                         endRadius: 180
@@ -48,7 +86,7 @@ struct LiquidGlassPodModifier: ViewModifier {
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color.white.opacity(isHovered ? 0.09 : 0.05),
+                                        Color.white.opacity(isHovered ? 0.10 : 0.05),
                                         Color.white.opacity(isHovered ? 0.03 : 0.01)
                                     ],
                                     startPoint: .top,
