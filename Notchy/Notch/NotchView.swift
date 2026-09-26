@@ -325,122 +325,137 @@ private struct NotchExpandedContent: View {
     @ObservedObject var viewModel: NotchViewModel
     @ObservedObject private var stats = SystemStatsManager.shared
     @ObservedObject private var layout = PageLayoutManager.shared
+    @ObservedObject private var lm = LicenseManager.shared
     @AppStorage("showBatteryIndicator") private var showBatteryIndicator = true
 
     var body: some View {
         let pageWidth = viewModel.openWidth - 48
         let activePages = layout.activePages
 
-        VStack(spacing: 8) {
-            // Header: Date/Time (left) + [Battery] [ < > ] [Settings] (right)
-            HStack(alignment: .center, spacing: 8) {
-                // Clock / Date
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(Date.now.formatted(date: .abbreviated, time: .omitted))
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(.white)
-                    Text(Date.now.formatted(date: .omitted, time: .shortened))
-                        .font(.system(size: 9, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.5))
-                }
-                .frame(width: 90, alignment: .leading)
-
-                Spacer()
-
-                // Battery indicator (toggleable from Settings)
-                if showBatteryIndicator {
-                    HStack(spacing: 3.5) {
-                        Image(systemName: stats.isCharging ? "battery.100.bolt" : "battery.75")
-                            .font(.system(size: 9))
-                            .foregroundStyle(stats.batteryPercentage <= 20 ? .red : (stats.isCharging ? .green : .white.opacity(0.75)))
-                        Text("\(stats.batteryPercentage)%")
-                            .font(.system(size: 8.5, weight: .medium, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.75))
+        ZStack {
+            VStack(spacing: 8) {
+                // Header: Date/Time (left) + [Battery] [ < > ] [Settings] (right)
+                HStack(alignment: .center, spacing: 8) {
+                    // Clock / Date
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(Date.now.formatted(date: .abbreviated, time: .omitted))
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.white)
+                        Text(Date.now.formatted(date: .omitted, time: .shortened))
+                            .font(.system(size: 9, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.5))
                     }
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3.5)
-                    .background(Color.white.opacity(0.06), in: Capsule())
-                }
+                    .frame(width: 90, alignment: .leading)
 
-                // Small Next / Back arrow buttons beside settings
-                if activePages.count > 1 {
-                    HStack(spacing: 1.5) {
-                        Button {
-                            withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
-                                viewModel.rewindPage()
-                            }
-                        } label: {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 8.5, weight: .bold))
-                                .foregroundStyle(viewModel.selectedPage > 0 ? Color.white.opacity(0.85) : Color.white.opacity(0.20))
-                                .frame(width: 20, height: 20)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(viewModel.selectedPage <= 0)
-                        .help("Previous Page (⌘←)")
-
-                        Button {
-                            withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
-                                viewModel.advancePage()
-                            }
-                        } label: {
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 8.5, weight: .bold))
-                                .foregroundStyle(viewModel.selectedPage < activePages.count - 1 ? Color.white.opacity(0.85) : Color.white.opacity(0.20))
-                                .frame(width: 20, height: 20)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(viewModel.selectedPage >= activePages.count - 1)
-                        .help("Next Page (⌘→)")
-                    }
-                    .padding(2)
-                    .liquidGlassCapsule()
-                }
-
-                // Action: Single clean Settings button in top right
-                NotchIconButton(systemName: "gearshape.fill", fontSize: 10.5) {
-                    SettingsWindowController.shared.show()
-                }
-                .help("Settings")
-            }
-
-            // Dynamic Smooth Horizontal Carousel (omits empty pages)
-            if activePages.isEmpty {
-                VStack(spacing: 8) {
                     Spacer()
-                    Image(systemName: "square.grid.2x2")
-                        .font(.system(size: 22))
-                        .foregroundStyle(.white.opacity(0.2))
-                    Text("No Active Modules")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.5))
-                    Button("Customize in Settings") {
+
+                    // Battery indicator (toggleable from Settings)
+                    if showBatteryIndicator {
+                        HStack(spacing: 3.5) {
+                            Image(systemName: stats.isCharging ? "battery.100.bolt" : "battery.75")
+                                .font(.system(size: 9))
+                                .foregroundStyle(stats.batteryPercentage <= 20 ? .red : (stats.isCharging ? .green : .white.opacity(0.75)))
+                            Text("\(stats.batteryPercentage)%")
+                                .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+                                .foregroundStyle(.white.opacity(0.75))
+                        }
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3.5)
+                        .background(Color.white.opacity(0.06), in: Capsule())
+                    }
+
+                    // Small Next / Back arrow buttons beside settings
+                    if activePages.count > 1 {
+                        HStack(spacing: 1.5) {
+                            Button {
+                                withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                                    viewModel.rewindPage()
+                                }
+                            } label: {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 8.5, weight: .bold))
+                                    .foregroundStyle(viewModel.selectedPage > 0 ? Color.white.opacity(0.85) : Color.white.opacity(0.20))
+                                    .frame(width: 20, height: 20)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(viewModel.selectedPage <= 0)
+                            .help("Previous Page (⌘←)")
+
+                            Button {
+                                withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                                    viewModel.advancePage()
+                                }
+                            } label: {
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 8.5, weight: .bold))
+                                    .foregroundStyle(viewModel.selectedPage < activePages.count - 1 ? Color.white.opacity(0.85) : Color.white.opacity(0.20))
+                                    .frame(width: 20, height: 20)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(viewModel.selectedPage >= activePages.count - 1)
+                            .help("Next Page (⌘→)")
+                        }
+                        .padding(2)
+                        .liquidGlassCapsule()
+                    }
+
+                    // Action: Single clean Settings button in top right
+                    NotchIconButton(systemName: "gearshape.fill", fontSize: 10.5) {
                         SettingsWindowController.shared.show()
                     }
-                    .controlSize(.small)
-                    Spacer()
+                    .help("Settings")
                 }
-                .frame(width: pageWidth, height: 165)
-            } else {
-                HStack(alignment: .top, spacing: 0) {
-                    ForEach(activePages) { page in
-                        NotchPageView(page: page, width: pageWidth)
-                            .frame(width: pageWidth, height: 165)
-                            .compositingGroup()
+
+                // Dynamic Smooth Horizontal Carousel (omits empty pages)
+                if activePages.isEmpty {
+                    VStack(spacing: 8) {
+                        Spacer()
+                        Image(systemName: "square.grid.2x2")
+                            .font(.system(size: 22))
+                            .foregroundStyle(.white.opacity(0.2))
+                        Text("No Active Modules")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.5))
+                        Button("Customize in Settings") {
+                            SettingsWindowController.shared.show()
+                        }
+                        .controlSize(.small)
+                        Spacer()
                     }
+                    .frame(width: pageWidth, height: 165)
+                } else {
+                    HStack(alignment: .top, spacing: 0) {
+                        ForEach(activePages) { page in
+                            NotchPageView(page: page, width: pageWidth)
+                                .frame(width: pageWidth, height: 165)
+                                .compositingGroup()
+                        }
+                    }
+                    .frame(width: pageWidth, alignment: .leading)
+                    .offset(x: -CGFloat(min(viewModel.selectedPage, max(0, activePages.count - 1))) * pageWidth)
+                    .clipped()
+                    .animation(.spring(response: 0.36, dampingFraction: 0.82), value: viewModel.selectedPage)
                 }
-                .frame(width: pageWidth, alignment: .leading)
-                .offset(x: -CGFloat(min(viewModel.selectedPage, max(0, activePages.count - 1))) * pageWidth)
-                .clipped()
-                .animation(.spring(response: 0.36, dampingFraction: 0.82), value: viewModel.selectedPage)
+
+                // Trial banner (only visible during trial)
+                TrialBannerView()
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 12)
+            .padding(.bottom, 12)
+            .frame(width: viewModel.openWidth, height: viewModel.contentHeight, alignment: .top)
+
+            // License gate overlay (only when trial expired)
+            if case .trialExpired = lm.state {
+                LicenseGateView()
+                    .frame(width: viewModel.openWidth, height: viewModel.contentHeight)
+                    .transition(.opacity)
             }
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 12)
-        .padding(.bottom, 12)
         .frame(width: viewModel.openWidth, height: viewModel.contentHeight, alignment: .top)
     }
 }
+
 
 struct CardSlotCountKey: EnvironmentKey {
     static let defaultValue: Int = 3

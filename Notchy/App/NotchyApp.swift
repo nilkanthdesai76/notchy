@@ -14,6 +14,11 @@ struct NotchyApp: App {
     // Hidden by default — the notch IS the UI. Re-enable from Settings.
     @AppStorage("showMenuBarIcon") private var showMenuBarIcon = false
 
+    init() {
+        // Kick off license / trial check as early as possible
+        Task { await LicenseManager.shared.checkOnLaunch() }
+    }
+
     var body: some Scene {
         MenuBarExtra("Notchy", systemImage: "macbook.gen2", isInserted: $showMenuBarIcon) {
             Button("Settings…") {

@@ -800,97 +800,279 @@ private struct AIProviderCard: View {
 // MARK: - Tab 7: License (Monetization)
 
 private struct SettingsLicenseTab: View {
-    @AppStorage("licenseEmail") private var licenseEmail = ""
-    @AppStorage("licenseKey") private var licenseKey = ""
-    @AppStorage("isLicensed") private var isLicensed = false
-    @State private var registrationError: String? = nil
+    @ObservedObject private var lm = LicenseManager.shared
+    @State private var keyInput = ""
+    @State private var isActivating = false
+    @State private var activateError: String?
+    @State private var showDeviceList = false
+    @State private var isDeactivating = false
 
     var body: some View {
-        Form {
-            Section("Status") {
-                HStack(spacing: 12) {
-                    Image(systemName: isLicensed ? "checkmark.circle.fill" : "xmark.circle.fill")
-                        .font(.system(size: 26))
-                        .foregroundStyle(isLicensed ? Color.green : Color.red)
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: 14) {
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(isLicensed ? "Status: Registered (Pro Active)" : "Status: Unregistered")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(isLicensed ? Color.green : Color.red)
+                // ── Status Card ──────────────────────────────────
+                statusCard
 
-                        Text(isLicensed ? "Thank you for supporting Notchy! All Pro features, token counters, and unlimited clipboard history are unlocked." : "Enjoy core features for free, or enter your Notchy Pro license key to unlock AI Token Quotas, 2FA, and custom liquid glass.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                // ── Activate / Enter Key ─────────────────────────
+                if case .trialExpired = lm.state { activateCard }
+                if case .trial = lm.state        { activateCard }
+
+                // ── Buy Section ──────────────────────────────────
+                if case .licensed = lm.state {} else { buyCard }
+
+                // ── Device Management (when licensed) ────────────
+                if case .licensed = lm.state { deviceCard }
+            }
+            .padding(14)
+        }
+        .scrollContentBackground(.hidden)
+        .sheet(isPresented: $showDeviceList) {
+            DeviceLimitView(licenseKey: keyInput) { showDeviceList = false }
+        }
+    }
+
+    // MARK: Status Card
+    @ViewBuilder private var statusCard: some View {
+        GroupBox {
+            HStack(spacing: 12) {
+                Group {
+                    switch lm.state {
+                    case .loading:
+                        ProgressView().scaleEffect(0.7)
+                            .frame(width: 28, height: 28)
+                    case .trial:
+                        Image(systemName: "clock.badge.exclamationmark.fill")
+                            .font(.system(size: 26))
+                            .foregroundStyle(.yellow)
+                    case .trialExpired:
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 26))
+                            .foregroundStyle(.red)
+                    case .licensed:
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 26))
+                            .foregroundStyle(.green)
+                    case .offlineGrace:
+                        Image(systemName: "wifi.slash")
+                            .font(.system(size: 26))
+                            .foregroundStyle(.orange)
                     }
                 }
-                .padding(.vertical, 6)
-            }
 
-            Section("License Details") {
-                HStack {
-                    Label("Email", systemImage: "at")
-                        .frame(width: 100, alignment: .leading)
-                    TextField("john.doe@email.com", text: $licenseEmail)
-                        .textFieldStyle(.roundedBorder)
-                        .disabled(isLicensed)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(statusTitle)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(statusColor)
+                    Text(statusSubtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
+                Spacer()
+            }
+            .padding(.vertical, 4)
+        } label: {
+            Label("License Status", systemImage: "key.fill")
+        }
+    }
 
-                HStack {
-                    Label("License Key", systemImage: "key.fill")
-                        .frame(width: 100, alignment: .leading)
-                    TextField("Ex: NOTCHY-XXXX-XXXX-XXXX", text: $licenseKey)
+    // MARK: Activate Card
+    private var activateCard: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("ENTER LICENSE KEY")
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .tracking(1.2)
+
+                HStack(spacing: 8) {
+                    TextField("NOTCHY-XXXX-XXXX-XXXX", text: $keyInput)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.body, design: .monospaced))
-                        .disabled(isLicensed)
+                        .autocorrectionDisabled()
+                        .onSubmit { Task { await activate() } }
+
+                    Button {
+                        Task { await activate() }
+                    } label: {
+                        if isActivating {
+                            ProgressView().scaleEffect(0.7).frame(width: 64, height: 22)
+                        } else {
+                            Text("Activate")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(keyInput.trimmingCharacters(in: .whitespaces).isEmpty || isActivating)
                 }
 
-                if let error = registrationError {
-                    Text(error)
+                if let err = activateError {
+                    Text(err)
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
-
-                HStack {
-                    Spacer()
-
-                    if !isLicensed {
-                        Button("Get a License") {
-                            if let url = URL(string: "https://notchy.app/buy") {
-                                NSWorkspace.shared.open(url)
-                            }
-                        }
-                        .controlSize(.regular)
-
-                        Button("Register") {
-                            validateAndActivateLicense()
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.regular)
-                        .disabled(licenseKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    } else {
-                        Button("Deactivate License") {
-                            isLicensed = false
-                            licenseKey = ""
-                        }
-                        .controlSize(.regular)
-                    }
-                }
-                .padding(.top, 4)
             }
+        } label: {
+            Label("Activate License", systemImage: "person.badge.key.fill")
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
-        .padding(14)
     }
 
-    private func validateAndActivateLicense() {
-        let key = licenseKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        if key.count >= 8 {
-            isLicensed = true
-            registrationError = nil
-        } else {
-            registrationError = "Invalid license key format. Please verify and try again."
+    // MARK: Buy Card
+    private var buyCard: some View {
+        GroupBox {
+            HStack(spacing: 10) {
+                BuyButton(title: "Single  $9.99", subtitle: "1 Mac · One-time", isPrimary: false) {
+                    lm.openBuyPage(plan: "single")
+                }
+                BuyButton(title: "Pro  $14.99", subtitle: "2 Macs · One-time", isPrimary: true) {
+                    lm.openBuyPage(plan: "pro")
+                }
+            }
+            Text("Your license key will arrive by email immediately after purchase.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 4)
+        } label: {
+            Label("Purchase Notchy", systemImage: "cart.fill")
         }
+    }
+
+    // MARK: Device Card
+    @ViewBuilder private var deviceCard: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 8) {
+                if lm.activatedDevices.isEmpty {
+                    Button("Load Device List") {
+                        Task {
+                            if let key = lm.currentLicenseKey {
+                                await lm.fetchDevices(licenseKey: key)
+                            }
+                        }
+                    }
+                } else {
+                    ForEach(lm.activatedDevices) { device in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 4) {
+                                    if device.device_id == lm.hardwareUUID {
+                                        Text("This Mac")
+                                            .font(.system(size: 11, weight: .semibold))
+                                            .foregroundStyle(.green)
+                                            .padding(.horizontal, 5)
+                                            .padding(.vertical, 1)
+                                            .background(Color.green.opacity(0.12), in: Capsule())
+                                    }
+                                    Text(device.device_name)
+                                        .font(.system(size: 12, weight: .medium))
+                                }
+                                Text("Activated: \(device.activated_at.prefix(10))")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if device.device_id == lm.hardwareUUID {
+                                Button("Deactivate this Mac") {
+                                    Task {
+                                        isDeactivating = true
+                                        _ = await lm.deactivateCurrentDevice()
+                                        isDeactivating = false
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .disabled(isDeactivating)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        if device.id != lm.activatedDevices.last?.id {
+                            Divider()
+                        }
+                    }
+                }
+            }
+        } label: {
+            Label("Activated Devices  (\(lm.activatedDevices.count) / \(lm.currentPlan == "pro" ? 2 : 1))", systemImage: "desktopcomputer")
+        }
+        .onAppear {
+            if let key = lm.currentLicenseKey {
+                Task { await lm.fetchDevices(licenseKey: key) }
+            }
+        }
+    }
+
+    // MARK: Helpers
+    private var statusTitle: String {
+        switch lm.state {
+        case .loading:            return "Checking license…"
+        case .trial(let days):    return "Trial — \(days) day\(days == 1 ? "" : "s") remaining"
+        case .trialExpired:       return "Trial Expired"
+        case .licensed(let plan): return "Licensed · \(plan.capitalized)"
+        case .offlineGrace(let plan, let days): return "Offline Grace · \(plan.capitalized) · \(days)d left"
+        }
+    }
+    private var statusSubtitle: String {
+        switch lm.state {
+        case .trial:          return "Enter a license key or purchase below to continue after trial."
+        case .trialExpired:   return "Your 2-day trial has ended. Purchase Notchy to keep using it."
+        case .licensed:       return "Thank you for supporting Notchy! ✦"
+        case .offlineGrace:   return "Connect to the internet to re-validate your license."
+        case .loading:        return ""
+        }
+    }
+    private var statusColor: Color {
+        switch lm.state {
+        case .licensed:     return .green
+        case .trialExpired: return .red
+        case .offlineGrace: return .orange
+        default:            return .yellow
+        }
+    }
+
+    private func activate() async {
+        isActivating = true
+        activateError = nil
+        let result = await lm.activateLicense(key: keyInput)
+        isActivating = false
+        switch result {
+        case .success: break
+        case .failure(let err):
+            if case .deviceLimitReached = err { showDeviceList = true }
+            else { activateError = err.errorDescription }
+        }
+    }
+}
+
+// MARK: - Buy Button (used in license tab)
+
+private struct BuyButton: View {
+    let title: String
+    let subtitle: String
+    let isPrimary: Bool
+    let action: () -> Void
+    var body: some View {
+        if isPrimary {
+            Button(action: action) {
+                buttonContent
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.regular)
+        } else {
+            Button(action: action) {
+                buttonContent
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.regular)
+        }
+    }
+
+    private var buttonContent: some View {
+        VStack(spacing: 2) {
+            Text(title).font(.system(size: 13, weight: .semibold))
+            Text(subtitle).font(.caption2).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
     }
 }
 
