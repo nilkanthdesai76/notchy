@@ -16,6 +16,7 @@ enum LicenseState: Equatable {
 
 struct LicenseCache: Codable {
     let licenseKey: String
+    let email: String
     let plan: String
     let validatedAt: Date
     var gracePeriodDays: Int { 7 }
@@ -48,8 +49,7 @@ final class LicenseManager: ObservableObject {
     // MARK: Config
     private let baseURL = "https://piaymlvggvuhdalprtwa.supabase.co/rest/v1/rpc"
     private let anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYXltbHZnZ3Z1aGRhbHBydHdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0MTk5MDYsImV4cCI6MjEwNTk5NTkwNn0.uj_dK-WvyTTB4qr0QZFRr-lGxURj8X-rwjTunpu0DLc"
-    private let singleBuyURL = "https://YOUR_STORE.lemonsqueezy.com/checkout/buy/SINGLE_VARIANT_ID"
-    private let proBuyURL    = "https://YOUR_STORE.lemonsqueezy.com/checkout/buy/PRO_VARIANT_ID"
+    private let pricingURL = "https://www.nildesai.com/notchy#pricing"
 
     // MARK: Published state
     @Published private(set) var state: LicenseState = .loading
@@ -87,7 +87,7 @@ final class LicenseManager: ObservableObject {
             if cache.isGraceExpired {
                 // Try to re-validate online
                 if let plan = await validateOnline(licenseKey: cache.licenseKey) {
-                    saveLicenseCache(LicenseCache(licenseKey: cache.licenseKey, plan: plan, validatedAt: Date()))
+                    saveLicenseCache(LicenseCache(licenseKey: cache.licenseKey, email: cache.email, plan: plan, validatedAt: Date()))
                     state = .licensed(plan: plan)
                 } else {
                     // Offline AND grace expired → treat as expired (but don't delete key — user may reconnect)
@@ -115,21 +115,32 @@ final class LicenseManager: ObservableObject {
 
     // MARK: - Activate License
 
-    func activateLicense(key: String) async -> Result<Void, LicenseError> {
+    func activateLicense(key: String, email: String) async -> Result<Void, LicenseError> {
+        let trimmedKey = key.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedEmail = email.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedEmail.isEmpty else {
+            let err = LicenseError.emailRequired
+            errorMessage = err.localizedDescription
+            return .failure(err)
+        }
+
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
 
         do {
             let result = try await callFunction("activate_license", body: [
-                "p_license_key": key.uppercased().trimmingCharacters(in: .whitespaces),
+                "p_license_key": trimmedKey,
+                "p_email": trimmedEmail,
                 "p_device_id": hardwareUUID,
                 "p_device_name": deviceName
             ])
 
             if let ok = result["ok"] as? Bool, ok {
                 let plan = result["plan"] as? String ?? "single"
-                saveLicenseCache(LicenseCache(licenseKey: key.uppercased(), plan: plan, validatedAt: Date()))
+                let returnEmail = (result["email"] as? String) ?? trimmedEmail
+                saveLicenseCache(LicenseCache(licenseKey: trimmedKey, email: returnEmail, plan: plan, validatedAt: Date()))
                 state = .licensed(plan: plan)
                 return .success(())
             } else {
@@ -142,10 +153,14 @@ final class LicenseManager: ObservableObject {
                     }
                     return .failure(.deviceLimitReached)
                 }
-                return .failure(.init(code: errCode))
+                let err = LicenseError(code: errCode)
+                errorMessage = err.localizedDescription
+                return .failure(err)
             }
         } catch {
-            return .failure(.networkError(error.localizedDescription))
+            let err = LicenseError.networkError(error.localizedDescription)
+            errorMessage = err.localizedDescription
+            return .failure(err)
         }
     }
 
@@ -192,20 +207,20 @@ final class LicenseManager: ObservableObject {
     // MARK: - Buy
 
     func openBuyPage(plan: String = "single") {
-        let urlStr = plan == "pro" ? proBuyURL : singleBuyURL
-        if let url = URL(string: urlStr) {
+        if let url = URL(string: pricingURL) {
             NSWorkspace.shared.open(url)
         }
     }
 
     var currentLicenseKey: String? { loadLicenseCache()?.licenseKey }
+    var currentEmail: String? { loadLicenseCache()?.email }
     var currentPlan: String? { loadLicenseCache()?.plan }
 
     // MARK: - Private Helpers
 
     private func silentRevalidate(cache: LicenseCache) async {
         if let plan = await validateOnline(licenseKey: cache.licenseKey) {
-            saveLicenseCache(LicenseCache(licenseKey: cache.licenseKey, plan: plan, validatedAt: Date()))
+            saveLicenseCache(LicenseCache(licenseKey: cache.licenseKey, email: cache.email, plan: plan, validatedAt: Date()))
             if case .offlineGrace = state { state = .licensed(plan: plan) }
         }
     }
@@ -278,6 +293,8 @@ final class LicenseManager: ObservableObject {
 // MARK: - LicenseError
 
 enum LicenseError: Error, LocalizedError {
+    case emailRequired
+    case emailMismatch
     case invalidKey
     case deviceLimitReached
     case licenseRevoked
@@ -287,6 +304,8 @@ enum LicenseError: Error, LocalizedError {
 
     init(code: String) {
         switch code {
+        case "email_required":        self = .emailRequired
+        case "email_mismatch":        self = .emailMismatch
         case "invalid_key":           self = .invalidKey
         case "device_limit_reached":  self = .deviceLimitReached
         case "license_refunded":      self = .licenseRefunded
@@ -297,6 +316,8 @@ enum LicenseError: Error, LocalizedError {
 
     var errorDescription: String? {
         switch self {
+        case .emailRequired:         return "Please enter the email address used during purchase."
+        case .emailMismatch:         return "Email does not match the purchase email for this license key."
         case .invalidKey:            return "Invalid license key. Please check and try again."
         case .deviceLimitReached:    return "This license is already active on the maximum number of devices."
         case .licenseRevoked:        return "This license has been revoked or expired."

@@ -15,6 +15,11 @@ struct NotchyApp: App {
     @AppStorage("showMenuBarIcon") private var showMenuBarIcon = false
 
     init() {
+        UserDefaults.standard.register(defaults: [
+            "glassMaterialStyle": "opaque",
+            "glassOpacity": 1.0,
+            "cardGlassOpacity": 0.85
+        ])
         // Kick off license / trial check as early as possible
         Task { await LicenseManager.shared.checkOnLaunch() }
     }

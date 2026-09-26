@@ -4,6 +4,7 @@ import SwiftUI
 
 struct LicenseGateView: View {
     @ObservedObject private var lm = LicenseManager.shared
+    @State private var email = ""
     @State private var licenseKey = ""
     @State private var isActivating = false
     @State private var errorMessage: String?
@@ -26,7 +27,7 @@ struct LicenseGateView: View {
                         .font(.system(size: 22, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white)
 
-                    Text("Enter your license key or purchase Notchy to continue.")
+                    Text("Enter your purchase email and license key to continue.")
                         .font(.system(size: 13))
                         .foregroundStyle(.white.opacity(0.5))
                         .multilineTextAlignment(.center)
@@ -36,48 +37,68 @@ struct LicenseGateView: View {
 
                 Divider()
                     .background(.white.opacity(0.08))
-                    .padding(.vertical, 24)
+                    .padding(.vertical, 20)
 
-                // License key entry
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("LICENSE KEY")
-                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.4))
-                        .tracking(1.5)
+                // Activation credentials
+                VStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("PURCHASE EMAIL")
+                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.4))
+                            .tracking(1.5)
 
-                    HStack(spacing: 10) {
-                        TextField("NOTCHY-XXXX-XXXX-XXXX", text: $licenseKey)
+                        TextField("you@example.com", text: $email)
                             .textFieldStyle(.plain)
-                            .font(.system(size: 14, design: .monospaced))
+                            .font(.system(size: 13))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
+                            .padding(.vertical, 9)
                             .background(.white.opacity(0.06))
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white.opacity(0.12), lineWidth: 1))
                             .autocorrectionDisabled()
-                            .onSubmit { Task { await activate() } }
+                    }
 
-                        Button {
-                            Task { await activate() }
-                        } label: {
-                            Group {
-                                if isActivating {
-                                    ProgressView().scaleEffect(0.7)
-                                        .frame(width: 56, height: 36)
-                                } else {
-                                    Text("Activate")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 10)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("LICENSE KEY")
+                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.4))
+                            .tracking(1.5)
+
+                        HStack(spacing: 10) {
+                            TextField("NOTCHY-XXXX-XXXX-XXXX", text: $licenseKey)
+                                .textFieldStyle(.plain)
+                                .font(.system(size: 13, design: .monospaced))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 9)
+                                .background(.white.opacity(0.06))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white.opacity(0.12), lineWidth: 1))
+                                .autocorrectionDisabled()
+                                .onSubmit { Task { await activate() } }
+
+                            Button {
+                                Task { await activate() }
+                            } label: {
+                                Group {
+                                    if isActivating {
+                                        ProgressView().scaleEffect(0.7)
+                                            .frame(width: 56, height: 34)
+                                    } else {
+                                        Text("Activate")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .padding(.horizontal, 16)
+                                            .padding(.vertical, 9)
+                                    }
                                 }
+                                .foregroundStyle(.black)
+                                .background(Color(licensingHex: "#ff2b84"))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
                             }
-                            .foregroundStyle(.black)
-                            .background(Color(licensingHex: "#ff2b84"))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .buttonStyle(.plain)
+                            .disabled(licenseKey.trimmingCharacters(in: .whitespaces).isEmpty || email.trimmingCharacters(in: .whitespaces).isEmpty || isActivating)
                         }
-                        .buttonStyle(.plain)
-                        .disabled(licenseKey.trimmingCharacters(in: .whitespaces).isEmpty || isActivating)
                     }
 
                     if let err = errorMessage {
@@ -92,40 +113,22 @@ struct LicenseGateView: View {
                     .background(.white.opacity(0.08))
                     .padding(.vertical, 24)
 
-                // Buy options
-                VStack(spacing: 10) {
-                    Text("Don't have a license?")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.white.opacity(0.4))
-
-                    HStack(spacing: 10) {
-                        BuyOptionButton(
-                            title: "Single License",
-                            price: "$9.99",
-                            subtitle: "1 Mac · One-time",
-                            color: Color(licensingHex: "#ff2b84")
-                        ) {
-                            lm.openBuyPage(plan: "single")
+                // Buy link
+                VStack(spacing: 8) {
+                    Button {
+                        lm.openBuyPage()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text("Don't have a license? Get one at nildesai.com/notchy")
+                            Image(systemName: "arrow.up.right")
                         }
-
-                        BuyOptionButton(
-                            title: "Pro License",
-                            price: "$14.99",
-                            subtitle: "2 Macs · One-time",
-                            color: Color(licensingHex: "#3ec7ff")
-                        ) {
-                            lm.openBuyPage(plan: "pro")
-                        }
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Color(licensingHex: "#ff2b84"))
                     }
-
-                    Text("After purchase, your license key will arrive in your email.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.white.opacity(0.3))
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 4)
+                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 32)
-                .padding(.bottom, 32)
+                .padding(.bottom, 28)
             }
             .frame(width: 420)
             .background(Color(licensingHex: "#0d0b0f"))
@@ -148,7 +151,7 @@ struct LicenseGateView: View {
     private func activate() async {
         isActivating = true
         errorMessage = nil
-        let result = await lm.activateLicense(key: licenseKey)
+        let result = await lm.activateLicense(key: licenseKey, email: email)
         isActivating = false
         switch result {
         case .success:
@@ -160,38 +163,6 @@ struct LicenseGateView: View {
                 errorMessage = err.errorDescription
             }
         }
-    }
-}
-
-// MARK: - Buy Option Button
-
-private struct BuyOptionButton: View {
-    let title: String
-    let price: String
-    let subtitle: String
-    let color: Color
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 4) {
-                Text(price)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(color)
-                Text(title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
-                Text(subtitle)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.white.opacity(0.45))
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(color.opacity(0.08))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(color.opacity(0.25), lineWidth: 1))
-        }
-        .buttonStyle(.plain)
     }
 }
 

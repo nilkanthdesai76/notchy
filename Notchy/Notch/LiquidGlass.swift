@@ -154,8 +154,8 @@ extension EnvironmentValues {
 struct LiquidGlassPodModifier: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.moduleCornerRadii) private var envRadii
-    @AppStorage("cardGlassOpacity") private var cardGlassOpacity = 0.50
-    @AppStorage("glassMaterialStyle") private var glassMaterialStyle = "liquid"
+    @AppStorage("cardGlassOpacity") private var cardGlassOpacity = 0.85
+    @AppStorage("glassMaterialStyle") private var glassMaterialStyle = "opaque"
     var cornerRadius: CGFloat? = nil
     var isHovered: Bool = false
     var ambientTint: Color? = nil

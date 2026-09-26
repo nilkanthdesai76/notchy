@@ -409,9 +409,9 @@ private struct SettingsPagesTab: View {
 // MARK: - Tab 4: Appearance & Liquid Glass
 
 private struct SettingsAppearanceTab: View {
-    @AppStorage("glassMaterialStyle") private var glassMaterialStyle = "liquid"
-    @AppStorage("glassOpacity") private var glassOpacity = 0.58
-    @AppStorage("cardGlassOpacity") private var cardGlassOpacity = 0.50
+    @AppStorage("glassMaterialStyle") private var glassMaterialStyle = "opaque"
+    @AppStorage("glassOpacity") private var glassOpacity = 1.0
+    @AppStorage("cardGlassOpacity") private var cardGlassOpacity = 0.85
     @AppStorage("showPanelShadow") private var showPanelShadow = false
     @AppStorage("showBottomGlow") private var showBottomGlow = false
     @AppStorage("showBatteryIndicator") private var showBatteryIndicator = true
@@ -801,6 +801,7 @@ private struct AIProviderCard: View {
 
 private struct SettingsLicenseTab: View {
     @ObservedObject private var lm = LicenseManager.shared
+    @State private var emailInput = ""
     @State private var keyInput = ""
     @State private var isActivating = false
     @State private var activateError: String?
@@ -817,9 +818,6 @@ private struct SettingsLicenseTab: View {
                 // ── Activate / Enter Key ─────────────────────────
                 if case .trialExpired = lm.state { activateCard }
                 if case .trial = lm.state        { activateCard }
-
-                // ── Buy Section ──────────────────────────────────
-                if case .licensed = lm.state {} else { buyCard }
 
                 // ── Device Management (when licensed) ────────────
                 if case .licensed = lm.state { deviceCard }
@@ -880,29 +878,43 @@ private struct SettingsLicenseTab: View {
     private var activateCard: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: 10) {
-                Text("ENTER LICENSE KEY")
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .tracking(1.2)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("PURCHASE EMAIL")
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .tracking(1.2)
 
-                HStack(spacing: 8) {
-                    TextField("NOTCHY-XXXX-XXXX-XXXX", text: $keyInput)
+                    TextField("you@example.com", text: $emailInput)
                         .textFieldStyle(.roundedBorder)
-                        .font(.system(.body, design: .monospaced))
+                        .font(.system(.body))
                         .autocorrectionDisabled()
-                        .onSubmit { Task { await activate() } }
+                }
 
-                    Button {
-                        Task { await activate() }
-                    } label: {
-                        if isActivating {
-                            ProgressView().scaleEffect(0.7).frame(width: 64, height: 22)
-                        } else {
-                            Text("Activate")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("ENTER LICENSE KEY")
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .tracking(1.2)
+
+                    HStack(spacing: 8) {
+                        TextField("NOTCHY-XXXX-XXXX-XXXX", text: $keyInput)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(.body, design: .monospaced))
+                            .autocorrectionDisabled()
+                            .onSubmit { Task { await activate() } }
+
+                        Button {
+                            Task { await activate() }
+                        } label: {
+                            if isActivating {
+                                ProgressView().scaleEffect(0.7).frame(width: 64, height: 22)
+                            } else {
+                                Text("Activate")
+                            }
                         }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(keyInput.trimmingCharacters(in: .whitespaces).isEmpty || emailInput.trimmingCharacters(in: .whitespaces).isEmpty || isActivating)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(keyInput.trimmingCharacters(in: .whitespaces).isEmpty || isActivating)
                 }
 
                 if let err = activateError {
@@ -910,31 +922,24 @@ private struct SettingsLicenseTab: View {
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
+
+                Divider()
+                    .padding(.vertical, 2)
+
+                HStack {
+                    Text("Don't have a license key?")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Get License Key ↗") {
+                        lm.openBuyPage()
+                    }
+                    .buttonStyle(.link)
+                    .font(.caption)
+                }
             }
         } label: {
             Label("Activate License", systemImage: "person.badge.key.fill")
-        }
-    }
-
-    // MARK: Buy Card
-    private var buyCard: some View {
-        GroupBox {
-            HStack(spacing: 10) {
-                BuyButton(title: "Single  $9.99", subtitle: "1 Mac · One-time", isPrimary: false) {
-                    lm.openBuyPage(plan: "single")
-                }
-                BuyButton(title: "Pro  $14.99", subtitle: "2 Macs · One-time", isPrimary: true) {
-                    lm.openBuyPage(plan: "pro")
-                }
-            }
-            Text("Your license key will arrive by email immediately after purchase.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-                .padding(.top, 4)
-        } label: {
-            Label("Purchase Notchy", systemImage: "cart.fill")
         }
     }
 
@@ -1013,9 +1018,13 @@ private struct SettingsLicenseTab: View {
     }
     private var statusSubtitle: String {
         switch lm.state {
-        case .trial:          return "Enter a license key or purchase below to continue after trial."
-        case .trialExpired:   return "Your 2-day trial has ended. Purchase Notchy to keep using it."
-        case .licensed:       return "Thank you for supporting Notchy! ✦"
+        case .trial:          return "Enter your license key or get one at nildesai.com/notchy."
+        case .trialExpired:   return "Your 2-day trial has ended. Enter a license key to continue."
+        case .licensed:
+            if let email = lm.currentEmail, !email.isEmpty {
+                return "Licensed to \(email) · Thank you for supporting Notchy! ✦"
+            }
+            return "Thank you for supporting Notchy! ✦"
         case .offlineGrace:   return "Connect to the internet to re-validate your license."
         case .loading:        return ""
         }
@@ -1032,7 +1041,7 @@ private struct SettingsLicenseTab: View {
     private func activate() async {
         isActivating = true
         activateError = nil
-        let result = await lm.activateLicense(key: keyInput)
+        let result = await lm.activateLicense(key: keyInput, email: emailInput)
         isActivating = false
         switch result {
         case .success: break
@@ -1040,39 +1049,6 @@ private struct SettingsLicenseTab: View {
             if case .deviceLimitReached = err { showDeviceList = true }
             else { activateError = err.errorDescription }
         }
-    }
-}
-
-// MARK: - Buy Button (used in license tab)
-
-private struct BuyButton: View {
-    let title: String
-    let subtitle: String
-    let isPrimary: Bool
-    let action: () -> Void
-    var body: some View {
-        if isPrimary {
-            Button(action: action) {
-                buttonContent
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.regular)
-        } else {
-            Button(action: action) {
-                buttonContent
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.regular)
-        }
-    }
-
-    private var buttonContent: some View {
-        VStack(spacing: 2) {
-            Text(title).font(.system(size: 13, weight: .semibold))
-            Text(subtitle).font(.caption2).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 10)
     }
 }
 

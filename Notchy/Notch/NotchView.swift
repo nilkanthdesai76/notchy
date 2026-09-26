@@ -22,9 +22,9 @@ struct NotchView: View {
     @AppStorage("liveActivityTimerEnabled") private var liveActivityTimerEnabled = true
     @AppStorage("liveActivityShelfEnabled") private var liveActivityShelfEnabled = true
     @AppStorage("liveActivityHideInFullscreen") private var liveActivityHideInFullscreen = true
-    @AppStorage("glassOpacity") private var glassOpacity = 0.58
+    @AppStorage("glassOpacity") private var glassOpacity = 1.0
     @AppStorage("showPanelShadow") private var showPanelShadow = false
-    @AppStorage("glassMaterialStyle") private var glassMaterialStyle = "liquid"
+    @AppStorage("glassMaterialStyle") private var glassMaterialStyle = "opaque"
     @AppStorage("showBatteryIndicator") private var showBatteryIndicator = true
     @AppStorage("showBottomGlow") private var showBottomGlow = false
 

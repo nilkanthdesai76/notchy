@@ -42,7 +42,6 @@ final class MediaManager: ObservableObject {
     private var adapterBuffer = ""
     private var adapterReceivedBytes = false
     private var watchdogTimer: Timer?
-    private var pollTimer: Timer?
     private var isResolvingBrowserTitle = false
 
     var isPlaying: Bool {
@@ -60,14 +59,13 @@ final class MediaManager: ObservableObject {
         sendCommandFunction = function
 
         startAdapterStream()
-        startWatchdogAndPolling()
+        startWatchdog()
     }
 
     deinit {
         // Nonisolated cleanup
         adapterProcess?.terminate()
         watchdogTimer?.invalidate()
-        pollTimer?.invalidate()
     }
 
     func shutdown() {
@@ -75,8 +73,6 @@ final class MediaManager: ObservableObject {
         adapterProcess = nil
         watchdogTimer?.invalidate()
         watchdogTimer = nil
-        pollTimer?.invalidate()
-        pollTimer = nil
     }
 
     // MARK: - Transport Controls
@@ -211,10 +207,8 @@ final class MediaManager: ObservableObject {
         hasSession = !newState.title.isEmpty || (isBrowserBundle(newState.bundleIdentifier) && newState.isPlaying)
     }
 
-    // MARK: - Watchdog & Periodic State Synchronization
-
-    private func startWatchdogAndPolling() {
-        // 1. Process Watchdog: auto-restart stream if it terminated or died
+    // MARK: - Watchdog
+    private func startWatchdog() {
         watchdogTimer = Timer.scheduledTimer(withTimeInterval: 2.5, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self = self else { return }
@@ -223,40 +217,6 @@ final class MediaManager: ObservableObject {
                 }
             }
         }
-
-        // 2. Continuous Synchronizer: polls running media / browser tabs when playing
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.synchronizeActiveMedia()
-            }
-        }
-    }
-
-    private func synchronizeActiveMedia() {
-        // If we are currently in a browser session or have no session, verify with system
-        Task.detached(priority: .utility) {
-            let result = BrowserAudioQueryEngine.queryBrowserOrDesktopAudio()
-            if let result = result {
-                await MainActor.run {
-                    self.applyPolledMediaResult(result)
-                }
-            }
-        }
-    }
-
-    private func applyPolledMediaResult(_ result: PolledMediaResult) {
-        // If system MediaRemote already gave a detailed title from Spotify or Music, don't overwrite with less info
-        if !isBrowserBundle(state.bundleIdentifier) && state.isPlaying && !state.title.isEmpty {
-            return
-        }
-
-        var newState = state
-        newState.title = result.title
-        newState.artist = result.artist
-        newState.bundleIdentifier = result.bundleIdentifier
-        newState.isPlaying = true
-        state = newState
-        hasSession = true
     }
 
     // MARK: - Browser YouTube Resolution
@@ -303,14 +263,15 @@ final class MediaManager: ObservableObject {
         isResolvingBrowserTitle = true
 
         Task.detached(priority: .userInitiated) {
-            let info = BrowserAudioQueryEngine.queryBrowserOrDesktopAudio()
+            let title = BrowserAudioQueryEngine.queryBrowserTitle(for: bundleID)
             await MainActor.run {
                 self.isResolvingBrowserTitle = false
-                if let info = info, !info.title.isEmpty {
+                if let rawTitle = title, !rawTitle.isEmpty {
                     var updated = self.state
-                    updated.title = self.cleanYouTubeTitle(info.title)
-                    updated.artist = info.artist.isEmpty ? "YouTube" : info.artist
-                    updated.bundleIdentifier = info.bundleIdentifier
+                    updated.title = self.cleanYouTubeTitle(rawTitle)
+                    if updated.artist.isEmpty {
+                        updated.artist = "YouTube"
+                    }
                     self.state = updated
                     self.hasSession = true
                 }
@@ -319,149 +280,73 @@ final class MediaManager: ObservableObject {
     }
 }
 
-// MARK: - Fast Multi-Browser Query Engine
-
-struct PolledMediaResult: Sendable {
-    let title: String
-    let artist: String
-    let bundleIdentifier: String
-}
+// MARK: - Safe Browser Query Engine (Only queries running apps via Bundle ID)
 
 enum BrowserAudioQueryEngine {
-    nonisolated static func queryBrowserOrDesktopAudio() -> PolledMediaResult? {
-        let scriptSource = """
-        tell application "System Events"
-            set runningApps to name of every process
-        end tell
+    nonisolated static func queryBrowserTitle(for bundleID: String) -> String? {
+        guard !bundleID.isEmpty else { return nil }
 
-        -- 1. Check Brave Browser
-        if runningApps contains "Brave Browser" then
+        // Never touch AppleScript unless the application is actively running on this Mac
+        let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+        guard !running.isEmpty else { return nil }
+
+        let b = bundleID.lowercased()
+        let scriptSource: String
+
+        if b.contains("chrome") || b.contains("brave") || b.contains("edge") || b.contains("vivaldi") || b.contains("opera") {
+            scriptSource = """
             try
-                tell application "Brave Browser"
+                tell application id "\(bundleID)"
                     repeat with w in windows
                         repeat with t in tabs of w
                             set tTitle to (title of t) as text
                             if tTitle contains "YouTube" or tTitle contains "SoundCloud" or tTitle contains "Spotify" or tTitle contains "Netflix" then
-                                return tTitle & "|||YouTube • Brave|||com.brave.Browser"
+                                return tTitle
                             end if
                         end repeat
                     end repeat
                 end tell
             end try
-        end if
-
-        -- 2. Check Google Chrome
-        if runningApps contains "Google Chrome" then
+            return ""
+            """
+        } else if b.contains("safari") {
+            scriptSource = """
             try
-                tell application "Google Chrome"
-                    repeat with w in windows
-                        repeat with t in tabs of w
-                            set tTitle to (title of t) as text
-                            if tTitle contains "YouTube" or tTitle contains "SoundCloud" or tTitle contains "Spotify" then
-                                return tTitle & "|||YouTube • Chrome|||com.google.Chrome"
-                            end if
-                        end repeat
-                    end repeat
-                end tell
-            end try
-        end if
-
-        -- 3. Check Safari
-        if runningApps contains "Safari" then
-            try
-                tell application "Safari"
+                tell application id "com.apple.Safari"
                     repeat with w in windows
                         repeat with t in tabs of w
                             set tTitle to (name of t) as text
                             if tTitle contains "YouTube" or tTitle contains "SoundCloud" or tTitle contains "Spotify" then
-                                return tTitle & "|||YouTube • Safari|||com.apple.Safari"
+                                return tTitle
                             end if
                         end repeat
                     end repeat
                 end tell
             end try
-        end if
-
-        -- 4. Check Arc Browser
-        if runningApps contains "Arc" then
+            return ""
+            """
+        } else if b.contains("thebrowser") || b.contains("arc") {
+            scriptSource = """
             try
-                tell application "Arc"
+                tell application id "company.thebrowser.Browser"
                     tell front window
                         set tTitle to (title of active tab) as text
                         if tTitle contains "YouTube" or tTitle contains "SoundCloud" then
-                            return tTitle & "|||YouTube • Arc|||company.thebrowser.Browser"
+                            return tTitle
                         end if
                     end tell
                 end tell
             end try
-        end if
-
-        -- 5. Check Microsoft Edge
-        if runningApps contains "Microsoft Edge" then
-            try
-                tell application "Microsoft Edge"
-                    repeat with w in windows
-                        repeat with t in tabs of w
-                            set tTitle to (title of t) as text
-                            if tTitle contains "YouTube" or tTitle contains "SoundCloud" then
-                                return tTitle & "|||YouTube • Edge|||com.microsoft.edgemac"
-                            end if
-                        end repeat
-                    end repeat
-                end tell
-            end try
-        end if
-
-        -- 6. Check Apple Music
-        if runningApps contains "Music" then
-            try
-                tell application "Music"
-                    if player state is playing then
-                        return (name of current track) & "|||" & (artist of current track) & "|||com.apple.Music"
-                    end if
-                end tell
-            end try
-        end if
-
-        -- 7. Check Spotify App
-        if runningApps contains "Spotify" then
-            try
-                tell application "Spotify"
-                    if player state is playing then
-                        return (name of current track) & "|||" & (artist of current track) & "|||com.spotify.client"
-                    end if
-                end tell
-            end try
-        end if
-
-        return ""
-        """
+            return ""
+            """
+        } else {
+            return nil
+        }
 
         var error: NSDictionary?
         guard let script = NSAppleScript(source: scriptSource) else { return nil }
         let output = script.executeAndReturnError(&error).stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-
-        guard !output.isEmpty, output.contains("|||") else { return nil }
-        let parts = output.components(separatedBy: "|||")
-        guard parts.count >= 3 else { return nil }
-
-        var rawTitle = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
-        // Clean YouTube title
-        if rawTitle.hasPrefix("(") && rawTitle.contains(") ") {
-            if let closingIdx = rawTitle.firstIndex(of: ")") {
-                let after = rawTitle.index(after: closingIdx)
-                rawTitle = String(rawTitle[after...]).trimmingCharacters(in: .whitespacesAndNewlines)
-            }
-        }
-        if rawTitle.hasSuffix(" - YouTube") {
-            rawTitle = String(rawTitle.dropLast(" - YouTube".count)).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-
-        return PolledMediaResult(
-            title: rawTitle,
-            artist: parts[1],
-            bundleIdentifier: parts[2]
-        )
+        return output.isEmpty ? nil : output
     }
 }
 

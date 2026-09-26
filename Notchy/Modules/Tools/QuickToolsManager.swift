@@ -19,17 +19,17 @@ final class QuickToolsManager: ObservableObject {
     @Published var lastPickedColor: NSColor?
     @Published var pickedColorFeedback: Bool = false
 
-    private var systemSleepAssertionID: IOPMAssertionID = 0
-    private var displaySleepAssertionID: IOPMAssertionID = 0
+    private var preventSystemSleepID: IOPMAssertionID = 0
+    private var idleSystemSleepID: IOPMAssertionID = 0
+    private var displaySleepID: IOPMAssertionID = 0
+    private var caffeinateProcess: Process?
 
     deinit {
         // Nonisolated cleanup
-        if systemSleepAssertionID != 0 {
-            IOPMAssertionRelease(systemSleepAssertionID)
-        }
-        if displaySleepAssertionID != 0 {
-            IOPMAssertionRelease(displaySleepAssertionID)
-        }
+        if preventSystemSleepID != 0 { IOPMAssertionRelease(preventSystemSleepID) }
+        if idleSystemSleepID != 0 { IOPMAssertionRelease(idleSystemSleepID) }
+        if displaySleepID != 0 { IOPMAssertionRelease(displaySleepID) }
+        caffeinateProcess?.terminate()
     }
 
     // MARK: - Caffeinate (Keep Awake)
@@ -47,37 +47,60 @@ final class QuickToolsManager: ObservableObject {
 
         let reason = "Notchy Keep Awake" as CFString
 
-        // 1. Prevent idle system sleep (CPU keeps running)
-        let sysResult = IOPMAssertionCreateWithName(
+        // 1. Prevent system sleep entirely (even when lid closes or AC changes)
+        _ = IOPMAssertionCreateWithName(
+            kIOPMAssertionTypePreventSystemSleep as CFString,
+            IOPMAssertionLevel(kIOPMAssertionLevelOn),
+            reason,
+            &preventSystemSleepID
+        )
+
+        // 2. Prevent idle system sleep
+        _ = IOPMAssertionCreateWithName(
             kIOPMAssertionTypePreventUserIdleSystemSleep as CFString,
             IOPMAssertionLevel(kIOPMAssertionLevelOn),
             reason,
-            &systemSleepAssertionID
+            &idleSystemSleepID
         )
 
-        // 2. Prevent idle display sleep (Screen stays on)
-        let dispResult = IOPMAssertionCreateWithName(
+        // 3. Prevent idle display sleep (Screen stays on while open)
+        _ = IOPMAssertionCreateWithName(
             kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
             IOPMAssertionLevel(kIOPMAssertionLevelOn),
             reason,
-            &displaySleepAssertionID
+            &displaySleepID
         )
 
-        if sysResult == kIOReturnSuccess || dispResult == kIOReturnSuccess {
-            isCaffeinated = true
-            NSSound(named: "Tink")?.play()
-        }
+        // 4. Launch caffeinate subprocess (-d: display, -i: idle system, -m: disk, -s: system sleep, -u: user active)
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/caffeinate")
+        process.arguments = ["-dimsu", "-w", "\(ProcessInfo.processInfo.processIdentifier)"]
+        try? process.run()
+        caffeinateProcess = process
+
+        isCaffeinated = true
+        NSSound(named: "Tink")?.play()
     }
 
     func stopCaffeinate() {
-        if systemSleepAssertionID != 0 {
-            IOPMAssertionRelease(systemSleepAssertionID)
-            systemSleepAssertionID = 0
+        if preventSystemSleepID != 0 {
+            IOPMAssertionRelease(preventSystemSleepID)
+            preventSystemSleepID = 0
         }
-        if displaySleepAssertionID != 0 {
-            IOPMAssertionRelease(displaySleepAssertionID)
-            displaySleepAssertionID = 0
+        if idleSystemSleepID != 0 {
+            IOPMAssertionRelease(idleSystemSleepID)
+            idleSystemSleepID = 0
         }
+        if displaySleepID != 0 {
+            IOPMAssertionRelease(displaySleepID)
+            displaySleepID = 0
+        }
+
+        if let proc = caffeinateProcess, proc.isRunning {
+            proc.terminate()
+        }
+        caffeinateProcess = nil
+
         isCaffeinated = false
     }
 

@@ -116,6 +116,16 @@ private struct AIProviderUsageCard: View {
         }
     }
 
+    private func limitColor(for percent: Double) -> Color {
+        if percent >= 0.85 {
+            return .red
+        } else if percent >= 0.60 {
+            return .orange
+        } else {
+            return accentColor
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             // Header: Icon + Name + Connection pill
@@ -148,35 +158,75 @@ private struct AIProviderUsageCard: View {
                 }
             }
 
-            if let fiveHour = provider.fiveHourUsagePercentage {
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack {
-                        Text("Session Limit (5h)")
-                            .font(.system(size: 8, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.6))
-                        Spacer()
-                        Text("\(Int(fiveHour * 100))% used")
-                            .font(.system(size: 8, weight: .bold, design: .monospaced))
-                            .foregroundStyle(fiveHour > 0.8 ? .red : (fiveHour > 0.5 ? .orange : accentColor))
-                    }
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(Color.white.opacity(0.12))
-                            Capsule()
-                                .fill(fiveHour > 0.8 ? Color.red : (fiveHour > 0.5 ? Color.orange : accentColor))
-                                .frame(width: max(0, geo.size.width * CGFloat(min(max(fiveHour, 0), 1))))
+            // ── Limit Gauges: 5h Session & Weekly Limits ──────────
+            if provider.fiveHourUsagePercentage != nil || provider.weeklyUsagePercentage != nil {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .top, spacing: 8) {
+                        // 5h Session Limit
+                        if let fiveHour = provider.fiveHourUsagePercentage {
+                            VStack(alignment: .leading, spacing: 2.5) {
+                                HStack {
+                                    Text("5h Limit")
+                                        .font(.system(size: 7.5, weight: .medium))
+                                        .foregroundStyle(.white.opacity(0.6))
+                                    Spacer()
+                                    Text("\(Int(fiveHour * 100))%")
+                                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                        .foregroundStyle(limitColor(for: fiveHour))
+                                }
+                                GeometryReader { geo in
+                                    ZStack(alignment: .leading) {
+                                        Capsule().fill(Color.white.opacity(0.12))
+                                        Capsule()
+                                            .fill(limitColor(for: fiveHour))
+                                            .frame(width: max(0, geo.size.width * CGFloat(min(max(fiveHour, 0), 1))))
+                                    }
+                                }
+                                .frame(height: 3)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+
+                        // Weekly Limit
+                        if let weekly = provider.weeklyUsagePercentage {
+                            VStack(alignment: .leading, spacing: 2.5) {
+                                HStack {
+                                    Text("Weekly Limit")
+                                        .font(.system(size: 7.5, weight: .medium))
+                                        .foregroundStyle(.white.opacity(0.6))
+                                    Spacer()
+                                    Text("\(Int(weekly * 100))%")
+                                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                        .foregroundStyle(limitColor(for: weekly))
+                                }
+                                GeometryReader { geo in
+                                    ZStack(alignment: .leading) {
+                                        Capsule().fill(Color.white.opacity(0.12))
+                                        Capsule()
+                                            .fill(limitColor(for: weekly))
+                                            .frame(width: max(0, geo.size.width * CGFloat(min(max(weekly, 0), 1))))
+                                    }
+                                }
+                                .frame(height: 3)
+                            }
+                            .frame(maxWidth: .infinity)
                         }
                     }
-                    .frame(height: 3)
 
-                    if let desc = provider.resetTimeDescription {
-                        Text("Refreshes in \(desc)")
-                            .font(.system(size: 7.5))
-                            .foregroundStyle(.white.opacity(0.4))
+                    if let desc = provider.resetTimeDescription, !desc.isEmpty {
+                        HStack(spacing: 3) {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .font(.system(size: 7))
+                                .foregroundStyle(.white.opacity(0.35))
+                            Text("Resets: \(desc)")
+                                .font(.system(size: 7))
+                                .foregroundStyle(.white.opacity(0.45))
+                        }
+                        .padding(.top, 1)
                     }
                 }
                 .padding(.horizontal, 6)
-                .padding(.vertical, 4)
+                .padding(.vertical, 4.5)
                 .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
             }
 
