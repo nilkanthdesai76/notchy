@@ -25,6 +25,8 @@ struct NotchView: View {
     @AppStorage("glassOpacity") private var glassOpacity = 0.58
     @AppStorage("showPanelShadow") private var showPanelShadow = false
     @AppStorage("glassMaterialStyle") private var glassMaterialStyle = "liquid"
+    @AppStorage("showBatteryIndicator") private var showBatteryIndicator = true
+    @AppStorage("showBottomGlow") private var showBottomGlow = false
 
     @ObservedObject private var fullscreen = FullscreenDetector.shared
 
@@ -195,7 +197,7 @@ struct NotchView: View {
                                 .init(color: Color.white.opacity(0.04), location: 0.18),
                                 .init(color: Color.clear, location: 0.55),
                                 .init(color: Color.white.opacity(0.04), location: 0.85),
-                                .init(color: Color(red: 1.0, green: 0.88, blue: 0.75).opacity(0.18), location: 1.0) // Luminous bottom caustic
+                                .init(color: showBottomGlow ? Color(red: 1.0, green: 0.88, blue: 0.75).opacity(0.18) : Color.white.opacity(0.04), location: 1.0)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
@@ -205,40 +207,57 @@ struct NotchView: View {
             )
             .clipShape(shape)
             .overlay(
-                // Luminous Liquid Glass Caustic Rim - only shown when open!
+                // Liquid Glass Rim Styling - only shown when open!
                 Group {
                     if viewModel.isOpen {
-                        // Ambient caustic optical bloom along the bottom squircle
-                        shape.stroke(
-                            LinearGradient(
-                                stops: [
-                                    .init(color: Color.clear, location: 0.0),
-                                    .init(color: Color.clear, location: 0.65),
-                                    .init(color: Color(red: 1.0, green: 0.85, blue: 0.70).opacity(0.35), location: 0.94),
-                                    .init(color: Color.white.opacity(0.55), location: 1.0)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ),
-                            lineWidth: 3.5
-                        )
-                        .blur(radius: 2)
+                        if showBottomGlow {
+                            // Ambient caustic optical bloom along the bottom squircle
+                            shape.stroke(
+                                LinearGradient(
+                                    stops: [
+                                        .init(color: Color.clear, location: 0.0),
+                                        .init(color: Color.clear, location: 0.65),
+                                        .init(color: Color(red: 1.0, green: 0.85, blue: 0.70).opacity(0.35), location: 0.94),
+                                        .init(color: Color.white.opacity(0.55), location: 1.0)
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                ),
+                                lineWidth: 3.5
+                            )
+                            .blur(radius: 2)
 
-                        // Razor-sharp specular caustic stroke
-                        shape.stroke(
-                            LinearGradient(
-                                stops: [
-                                    .init(color: Color.white.opacity(0.32), location: 0.0),      // Top specular rim
-                                    .init(color: Color.white.opacity(0.14), location: 0.25),     // Upper sides
-                                    .init(color: Color.white.opacity(0.18), location: 0.70),     // Lower sides
-                                    .init(color: Color(red: 1.0, green: 0.90, blue: 0.80).opacity(0.70), location: 0.93), // Radiant caustic light
-                                    .init(color: Color.white.opacity(0.90), location: 1.0)       // Bottom caustic focus
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ),
-                            lineWidth: 1.2
-                        )
+                            // Caustic stroke with warm refractive focus
+                            shape.stroke(
+                                LinearGradient(
+                                    stops: [
+                                        .init(color: Color.white.opacity(0.32), location: 0.0),      // Top specular rim
+                                        .init(color: Color.white.opacity(0.14), location: 0.25),     // Upper sides
+                                        .init(color: Color.white.opacity(0.18), location: 0.70),     // Lower sides
+                                        .init(color: Color(red: 1.0, green: 0.90, blue: 0.80).opacity(0.70), location: 0.93), // Radiant caustic light
+                                        .init(color: Color.white.opacity(0.90), location: 1.0)       // Bottom caustic focus
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                ),
+                                lineWidth: 1.2
+                            )
+                        } else {
+                            // Clean subtle specular glass rim with zero bottom glow
+                            shape.stroke(
+                                LinearGradient(
+                                    stops: [
+                                        .init(color: Color.white.opacity(0.28), location: 0.0),
+                                        .init(color: Color.white.opacity(0.12), location: 0.25),
+                                        .init(color: Color.white.opacity(0.08), location: 0.70),
+                                        .init(color: Color.white.opacity(0.18), location: 1.0)
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                ),
+                                lineWidth: 1.0
+                            )
+                        }
                     }
                 }
             )
@@ -361,14 +380,15 @@ private struct NotchExpandedContent: View {
     @ObservedObject var viewModel: NotchViewModel
     @ObservedObject private var stats = SystemStatsManager.shared
     @ObservedObject private var layout = PageLayoutManager.shared
+    @AppStorage("showBatteryIndicator") private var showBatteryIndicator = true
 
     var body: some View {
         let pageWidth = viewModel.openWidth - 48
         let activePages = layout.activePages
 
-        VStack(spacing: 10) {
-            // Header: Date/Time + Settings Button (clean & spacious, no tabs above, no quit/reorder)
-            HStack(alignment: .center, spacing: 0) {
+        VStack(spacing: 8) {
+            // Header: Date/Time (left) + [Battery] [ < > ] [Settings] (right)
+            HStack(alignment: .center, spacing: 8) {
                 // Clock / Date
                 VStack(alignment: .leading, spacing: 1) {
                     Text(Date.now.formatted(date: .abbreviated, time: .omitted))
@@ -378,12 +398,62 @@ private struct NotchExpandedContent: View {
                         .font(.system(size: 9, weight: .medium, design: .rounded))
                         .foregroundStyle(.white.opacity(0.5))
                 }
-                .frame(width: 100, alignment: .leading)
+                .frame(width: 90, alignment: .leading)
 
                 Spacer()
 
+                // Battery indicator (toggleable from Settings)
+                if showBatteryIndicator {
+                    HStack(spacing: 3.5) {
+                        Image(systemName: stats.isCharging ? "battery.100.bolt" : "battery.75")
+                            .font(.system(size: 9))
+                            .foregroundStyle(stats.batteryPercentage <= 20 ? .red : (stats.isCharging ? .green : .white.opacity(0.75)))
+                        Text("\(stats.batteryPercentage)%")
+                            .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.75))
+                    }
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3.5)
+                    .background(Color.white.opacity(0.06), in: Capsule())
+                }
+
+                // Small Next / Back arrow buttons beside settings
+                if activePages.count > 1 {
+                    HStack(spacing: 1.5) {
+                        Button {
+                            withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                                viewModel.rewindPage()
+                            }
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 8.5, weight: .bold))
+                                .foregroundStyle(viewModel.selectedPage > 0 ? Color.white.opacity(0.85) : Color.white.opacity(0.20))
+                                .frame(width: 20, height: 20)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(viewModel.selectedPage <= 0)
+                        .help("Previous Page (⌘←)")
+
+                        Button {
+                            withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                                viewModel.advancePage()
+                            }
+                        } label: {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 8.5, weight: .bold))
+                                .foregroundStyle(viewModel.selectedPage < activePages.count - 1 ? Color.white.opacity(0.85) : Color.white.opacity(0.20))
+                                .frame(width: 20, height: 20)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(viewModel.selectedPage >= activePages.count - 1)
+                        .help("Next Page (⌘→)")
+                    }
+                    .padding(2)
+                    .liquidGlassCapsule()
+                }
+
                 // Action: Single clean Settings button in top right
-                NotchIconButton(systemName: "gearshape.fill", fontSize: 11) {
+                NotchIconButton(systemName: "gearshape.fill", fontSize: 10.5) {
                     SettingsWindowController.shared.show()
                 }
                 .help("Settings")
@@ -418,82 +488,9 @@ private struct NotchExpandedContent: View {
                 .clipped()
                 .animation(.spring(response: 0.36, dampingFraction: 0.82), value: viewModel.selectedPage)
             }
-
-            // Footer: Battery + Page Dots + Small Navigation Arrows at Bottom Right Corner
-            HStack(alignment: .center, spacing: 10) {
-                // Battery
-                HStack(spacing: 4) {
-                    Image(systemName: stats.isCharging ? "battery.100.bolt" : "battery.75")
-                        .font(.system(size: 9))
-                        .foregroundStyle(stats.batteryPercentage <= 20 ? .red : (stats.isCharging ? .green : .white.opacity(0.6)))
-                    Text("\(stats.batteryPercentage)%")
-                        .font(.system(size: 8.5, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.6))
-                }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(Color.white.opacity(0.04), in: Capsule())
-
-                Spacer()
-
-                // Page Dots Indicator (if more than 1 active page)
-                if activePages.count > 1 {
-                    HStack(spacing: 5) {
-                        ForEach(0..<activePages.count, id: \.self) { index in
-                            Circle()
-                                .fill(viewModel.selectedPage == index ? Color.white : Color.white.opacity(0.25))
-                                .frame(width: viewModel.selectedPage == index ? 6 : 4, height: viewModel.selectedPage == index ? 6 : 4)
-                                .animation(.spring(response: 0.25), value: viewModel.selectedPage)
-                                .onTapGesture {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                        viewModel.selectPage(index)
-                                    }
-                                }
-                        }
-                    }
-                }
-
-                Spacer()
-
-                // Small Next / Back arrow buttons at the bottom right corner
-                if activePages.count > 1 {
-                    HStack(spacing: 3) {
-                        Button {
-                            withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
-                                viewModel.rewindPage()
-                            }
-                        } label: {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundStyle(viewModel.selectedPage > 0 ? Color.white.opacity(0.9) : Color.white.opacity(0.2))
-                                .frame(width: 22, height: 20)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(viewModel.selectedPage <= 0)
-                        .help("Previous Page (⌘←)")
-
-                        Button {
-                            withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
-                                viewModel.advancePage()
-                            }
-                        } label: {
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundStyle(viewModel.selectedPage < activePages.count - 1 ? Color.white.opacity(0.9) : Color.white.opacity(0.2))
-                                .frame(width: 22, height: 20)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(viewModel.selectedPage >= activePages.count - 1)
-                        .help("Next Page (⌘→)")
-                    }
-                    .padding(2.5)
-                    .liquidGlassCapsule()
-                }
-            }
-            .padding(.horizontal, 4)
         }
         .padding(.horizontal, 24)
-        .padding(.top, 14)
+        .padding(.top, 12)
         .padding(.bottom, 12)
         .frame(width: viewModel.openWidth, height: viewModel.contentHeight, alignment: .top)
     }

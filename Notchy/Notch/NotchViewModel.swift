@@ -37,7 +37,7 @@ final class NotchViewModel: ObservableObject {
         let geometry = screen.notchGeometry
         let openWidth = min(screen.frame.width - 48, 660)
         self.openWidth = openWidth
-        self.contentHeight = 270
+        self.contentHeight = 220
         self.hasNotch = geometry.hasNotch
         self.topInset = geometry.hasNotch ? geometry.size.height : 0
 

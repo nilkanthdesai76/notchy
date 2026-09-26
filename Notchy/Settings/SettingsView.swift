@@ -25,6 +25,8 @@ struct SettingsView: View {
     @AppStorage("showPanelShadow") private var showPanelShadow = false
     @AppStorage("glassMaterialStyle") private var glassMaterialStyle = "liquid"
     @AppStorage("cardGlassOpacity") private var cardGlassOpacity = 0.50
+    @AppStorage("showBatteryIndicator") private var showBatteryIndicator = true
+    @AppStorage("showBottomGlow") private var showBottomGlow = false
 
     var body: some View {
         TabView {
@@ -133,6 +135,20 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+
+                    Toggle(isOn: $showBottomGlow) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Bottom Edge Caustic Glow")
+                                .font(.body)
+                            Text("Warm ambient caustic light bloom along the bottom squircle of the expanded notch.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                Section("Header & Controls") {
+                    Toggle("Show Battery Indicator in Header", isOn: $showBatteryIndicator)
                 }
 
                 Section("Live Material Preview") {
