@@ -625,26 +625,20 @@ private struct SettingsAITab: View {
     var body: some View {
         Form {
             Section("Tracked AI Providers") {
-                Text("Select which AI providers and tools appear in your Notch AI Token monitor:")
+                Text("Select which AI providers and local coding tools appear in your Notch AI Token monitor:")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .padding(.bottom, 2)
 
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
                     ForEach(KnownAIProvider.allCases) { provider in
-                        Toggle(isOn: Binding(
-                            get: { ai.isTracked(provider) },
-                            set: { ai.setTracked(provider, tracked: $0) }
-                        )) {
-                            HStack(spacing: 6) {
-                                Image(systemName: provider.iconName)
-                                    .foregroundStyle(Color(nsColor: provider.accentColor))
-                                    .frame(width: 16)
-                                Text(provider.displayName)
-                                    .font(.system(size: 11.5, weight: .medium))
-                            }
+                        let isTracked = ai.isTracked(provider)
+                        AIProviderCard(
+                            provider: provider,
+                            isTracked: isTracked
+                        ) {
+                            ai.setTracked(provider, tracked: !isTracked)
                         }
-                        .toggleStyle(.checkbox)
-                        .padding(.vertical, 2)
                     }
                 }
                 .padding(.vertical, 4)
@@ -733,6 +727,73 @@ private struct SettingsAITab: View {
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .padding(14)
+    }
+}
+
+private struct AIProviderCard: View {
+    let provider: KnownAIProvider
+    let isTracked: Bool
+    let onToggle: () -> Void
+
+    @State private var isHovered = false
+
+    private var accentColor: Color {
+        Color(nsColor: provider.accentColor)
+    }
+
+    var body: some View {
+        Button(action: onToggle) {
+            HStack(spacing: 9) {
+                // Provider App Icon Badge
+                ZStack {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(accentColor.opacity(isTracked ? 0.22 : 0.08))
+                        .frame(width: 28, height: 28)
+                    Image(systemName: provider.iconName)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(isTracked ? accentColor : Color.secondary.opacity(0.8))
+                }
+
+                // Title & Subtitle Info
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(provider.displayName)
+                        .font(.system(size: 11.5, weight: isTracked ? .semibold : .medium))
+                        .foregroundStyle(isTracked ? .primary : .secondary)
+                        .lineLimit(1)
+                    Text(provider.categoryDescription)
+                        .font(.system(size: 8.5))
+                        .foregroundStyle(.secondary.opacity(0.8))
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 4)
+
+                // Active Check Indicator
+                ZStack {
+                    if isTracked {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 15))
+                            .foregroundStyle(Color.cyan)
+                    } else {
+                        Image(systemName: "circle")
+                            .font(.system(size: 15))
+                            .foregroundStyle(Color.secondary.opacity(0.3))
+                    }
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(isTracked ? Color.white.opacity(0.08) : Color.white.opacity(isHovered ? 0.05 : 0.02))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(isTracked ? Color.cyan.opacity(0.4) : Color.white.opacity(0.06), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
     }
 }
 

@@ -149,6 +149,22 @@ enum KnownAIProvider: String, CaseIterable, Identifiable {
         case .devin: return NSColor(red: 0.20, green: 0.70, blue: 0.60, alpha: 1.0)
         }
     }
+
+    var categoryDescription: String {
+        switch self {
+        case .antigravity: return "Google Cloud Code / Gemini"
+        case .claude: return "Anthropic Claude CLI (~/.claude)"
+        case .cursor: return "Cursor Editor Sessions"
+        case .codex: return "OpenAI GPT-4o / Codex"
+        case .opencode: return "OpenCode Agent (~/.config)"
+        case .kimi: return "Moonshot AI API Key"
+        case .ollama: return "Local Server (:11434)"
+        case .openrouter: return "Unified AI Gateway"
+        case .copilot: return "GitHub Copilot Chat"
+        case .grok: return "xAI Grok API Key"
+        case .devin: return "Cognition Devin Agent"
+        }
+    }
 }
 
 // MARK: - AI Provider Usage Model
