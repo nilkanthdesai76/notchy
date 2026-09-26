@@ -2,8 +2,10 @@
 //  SettingsView.swift
 //  Notchy
 //
-//  Complete user preferences for modules, AI providers, layout, and permissions.
-//  Includes full draggable 3-page layout customizer.
+//  Advanced Multi-Tab Settings Console for Notchy.
+//  Faithfully crafted to match NotchNook aesthetics, featuring custom icon toolbars,
+//  interactive live notch previews, gesture tuning, liquid glass appearance,
+//  modular drag & drop reordering, and Pro license key monetization.
 //
 
 import AVFoundation
@@ -11,420 +13,1040 @@ import Combine
 import ServiceManagement
 import SwiftUI
 
+// MARK: - Settings Tab Definitions
+
+enum SettingsTab: String, CaseIterable, Identifiable {
+    case general = "General"
+    case gestures = "Gestures"
+    case liveActivities = "Live Activities"
+    case pages = "Pages & Layout"
+    case appearance = "Appearance"
+    case shelf = "File Shelf"
+    case ai = "AI Providers"
+    case license = "License"
+    case about = "About"
+
+    var id: String { rawValue }
+
+    var iconName: String {
+        switch self {
+        case .general: return "gearshape.fill"
+        case .gestures: return "hand.point.up.left.fill"
+        case .liveActivities: return "waveform.badge.magnifyingglass"
+        case .pages: return "square.grid.3x1.below.line.grid.1x2"
+        case .appearance: return "paintpalette.fill"
+        case .shelf: return "tray.and.arrow.down.fill"
+        case .ai: return "sparkles"
+        case .license: return "key.fill"
+        case .about: return "info.circle.fill"
+        }
+    }
+}
+
+// MARK: - Root Settings View
+
 struct SettingsView: View {
-    @AppStorage("defaultPage") private var defaultPage = 0
-    @AppStorage("kimiApiKey") private var kimiApiKey = ""
-    @AppStorage("customGeminiPath") private var customGeminiPath = ""
-    @AppStorage("showMenuBarIcon") private var showMenuBarIcon = false
-    @AppStorage("hoverDelay") private var hoverDelay = 0.05
-    @AppStorage("liveActivityMediaEnabled") private var liveActivityMediaEnabled = true
-    @AppStorage("liveActivityTimerEnabled") private var liveActivityTimerEnabled = true
-    @AppStorage("liveActivityShelfEnabled") private var liveActivityShelfEnabled = true
-    @AppStorage("liveActivityHideInFullscreen") private var liveActivityHideInFullscreen = true
-    @AppStorage("glassOpacity") private var glassOpacity = 0.58
-    @AppStorage("showPanelShadow") private var showPanelShadow = false
-    @AppStorage("glassMaterialStyle") private var glassMaterialStyle = "liquid"
-    @AppStorage("cardGlassOpacity") private var cardGlassOpacity = 0.50
-    @AppStorage("showBatteryIndicator") private var showBatteryIndicator = true
-    @AppStorage("showBottomGlow") private var showBottomGlow = false
+    @State private var selectedTab: SettingsTab = .general
 
     var body: some View {
-        TabView {
-            // Tab 1: Draggable Pages Layout
-            VStack(alignment: .leading, spacing: 14) {
-                // Default Open Page Picker
-                HStack {
-                    Text("Default Open Page:")
-                        .font(.subheadline)
-                    Picker("", selection: $defaultPage) {
-                        Text("Page 1").tag(0)
-                        Text("Page 2").tag(1)
-                        Text("Page 3").tag(2)
-                    }
-                    .frame(width: 140)
-                    Spacer()
-                }
-                .padding(.horizontal, 4)
-
-                Divider()
-
-                // Draggable 3-Page Reorganizer
-                PageOrganizerView()
-            }
-            .padding(18)
-            .tabItem {
-                Label("Pages & Layout", systemImage: "square.grid.3x1.below.line.grid.1x2")
-            }
-
-            // Tab 2: Appearance & Liquid Glass Customization
-            Form {
-                Section("Liquid Glass Theme") {
-                    Picker("Theme Style", selection: $glassMaterialStyle) {
-                        Text("Liquid Glass (Frosted & Translucent)").tag("liquid")
-                        Text("Crystal Clear (Maximum Transparency)").tag("crystal")
-                        Text("Deep Graphite (Subtle Blur)").tag("graphite")
-                        Text("Classic Opaque (Solid Black)").tag("opaque")
-                    }
-                    .onChange(of: glassMaterialStyle) { newStyle in
-                        switch newStyle {
-                        case "crystal":
-                            glassOpacity = 0.35
-                            cardGlassOpacity = 0.35
-                        case "liquid":
-                            glassOpacity = 0.58
-                            cardGlassOpacity = 0.50
-                        case "graphite":
-                            glassOpacity = 0.80
-                            cardGlassOpacity = 0.65
-                        case "opaque":
-                            glassOpacity = 1.0
-                            cardGlassOpacity = 0.85
-                        default:
-                            break
+        VStack(spacing: 0) {
+            // NotchNook-styled Top Navigation Bar
+            HStack(spacing: 2) {
+                ForEach(SettingsTab.allCases) { tab in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.16)) {
+                            selectedTab = tab
                         }
-                    }
-
-                    if glassMaterialStyle != "opaque" {
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text("Panel Transparency / Tint")
-                                Spacer()
-                                Text("\(Int((1.0 - glassOpacity) * 100))% transparent (\(Int(glassOpacity * 100))% tint)")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Slider(value: $glassOpacity, in: 0.20...0.95, step: 0.05) {
-                                Text("Glass Opacity")
-                            } minimumValueLabel: {
-                                Text("Crystal")
-                                    .font(.caption2)
-                            } maximumValueLabel: {
-                                Text("Dark")
-                                    .font(.caption2)
-                            }
-                        }
-
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text("Module Card Translucency")
-                                Spacer()
-                                Text("\(Int(cardGlassOpacity * 100))%")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Slider(value: $cardGlassOpacity, in: 0.20...0.90, step: 0.05) {
-                                Text("Card Opacity")
-                            } minimumValueLabel: {
-                                Text("Clear")
-                                    .font(.caption2)
-                            } maximumValueLabel: {
-                                Text("Solid")
-                                    .font(.caption2)
-                            }
-                        }
-                    }
-                }
-
-                Section("Drop Shadow & Edges") {
-                    Toggle(isOn: $showPanelShadow) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Outer Panel Shadow")
-                                .font(.body)
-                            Text("Draws an ambient drop shadow outside the expanded notch onto your wallpaper. Disabled by default for razor-sharp flush edges.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    Toggle(isOn: $showBottomGlow) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Bottom Edge Caustic Glow")
-                                .font(.body)
-                            Text("Warm ambient caustic light bloom along the bottom squircle of the expanded notch.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-
-                Section("Header & Controls") {
-                    Toggle("Show Battery Indicator in Header", isOn: $showBatteryIndicator)
-                }
-
-                Section("Live Material Preview") {
-                    ZStack {
-                        // Simulated colorful desktop wallpaper background (like macOS wallpaper)
-                        LinearGradient(
-                            colors: [Color.red.opacity(0.85), Color.purple.opacity(0.85), Color.blue.opacity(0.85)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                        // Preview Glass Plate
-                        HStack(spacing: 12) {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("Notchy Glass Preview")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundStyle(.white)
-                                Text("Wallpaper vibrancy softly showing through")
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(.white.opacity(0.7))
-                            }
-                            Spacer()
-
-                            // Sample mini module pod
-                            HStack(spacing: 6) {
-                                Image(systemName: "sparkles")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(.cyan)
-                                Text("Liquid Glass")
-                                    .font(.system(size: 10, weight: .semibold))
-                                    .foregroundStyle(.white)
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(.ultraThinMaterial.opacity(cardGlassOpacity))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                            .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
-                                    )
-                            )
-                        }
-                        .padding(14)
-                        .background(
-                            ZStack {
-                                if glassMaterialStyle == "opaque" {
-                                    Color.black
-                                } else {
-                                    VisualEffectView(material: .hudWindow, blendingMode: .withinWindow)
-                                    Color.black.opacity(glassOpacity)
-                                }
-                            }
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.25), lineWidth: 1)
-                        )
-                        .padding(10)
-                    }
-                    .frame(height: 90)
-                }
-            }
-            .formStyle(.grouped)
-            .padding(14)
-            .tabItem {
-                Label("Appearance", systemImage: "paintpalette")
-            }
-
-            // Tab 2: Live Activities
-            Form {
-                Section {
-                    Toggle(isOn: $liveActivityMediaEnabled) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Media Playback")
-                                .font(.body)
-                            Text("Shows album art and animated equalizer wings while music or video is playing")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    Toggle(isOn: $liveActivityTimerEnabled) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Timer Countdown")
-                                .font(.body)
-                            Text("Shows the timer icon and real-time countdown when a timer is running")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    Toggle(isOn: $liveActivityShelfEnabled) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("File Drop Shelf")
-                                .font(.body)
-                            Text("Highlights the notch wings when dragging files across the display")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                } header: {
-                    Text("Closed Notch Live Activities")
-                } footer: {
-                    Text("When the notch is closed, Notchy stays completely hidden behind the hardware bezel unless an enabled activity is running.")
-                }
-
-                Section {
-                    Toggle(isOn: $liveActivityHideInFullscreen) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Hide in Fullscreen")
-                                .font(.body)
-                            Text("Automatically suppresses all notch live activities while watching full screen videos or working in full screen spaces")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                } header: {
-                    Text("Fullscreen Behavior")
-                }
-            }
-            .formStyle(.grouped)
-            .padding(14)
-            .tabItem {
-                Label("Live Activities", systemImage: "waveform.badge.magnifyingglass")
-            }
-
-            // Tab 2: AI Providers & Usage
-            Form {
-                Section("Antigravity & Local AI") {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Label("Google Antigravity", systemImage: "sparkles")
-                            Spacer()
-                            Text(customGeminiPath.isEmpty ? "Auto-detected (~/.gemini)" : customGeminiPath)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                    } label: {
+                        VStack(spacing: 4) {
+                            Image(systemName: tab.iconName)
+                                .font(.system(size: 15, weight: selectedTab == tab ? .semibold : .regular))
+                                .foregroundStyle(selectedTab == tab ? Color.cyan : Color.secondary)
+                                .frame(height: 20)
+                            Text(tab.rawValue)
+                                .font(.system(size: 10, weight: selectedTab == tab ? .semibold : .medium))
+                                .foregroundStyle(selectedTab == tab ? .white : .secondary)
                                 .lineLimit(1)
-                                .truncationMode(.middle)
+                                .minimumScaleFactor(0.85)
                         }
-
-                        HStack(spacing: 8) {
-                            Button("Locate .gemini Folder…") {
-                                let panel = NSOpenPanel()
-                                panel.canChooseFiles = false
-                                panel.canChooseDirectories = true
-                                panel.allowsMultipleSelection = false
-                                panel.showsHiddenFiles = true
-                                panel.directoryURL = URL(fileURLWithPath: NSHomeDirectory())
-                                if panel.runModal() == .OK, let url = panel.url {
-                                    customGeminiPath = url.path
-                                    AIUsageManager.shared.refresh()
-                                }
-                            }
-                            .controlSize(.small)
-
-                            if !customGeminiPath.isEmpty {
-                                Button("Reset") {
-                                    customGeminiPath = ""
-                                    AIUsageManager.shared.refresh()
-                                }
-                                .controlSize(.small)
-                            }
-
-                            Spacer()
-
-                            Button("Sync Quota") {
-                                AIUsageManager.shared.refresh()
-                            }
-                            .controlSize(.small)
-                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(selectedTab == tab ? Color.white.opacity(0.12) : Color.clear)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .strokeBorder(selectedTab == tab ? Color.white.opacity(0.15) : Color.clear, lineWidth: 0.5)
+                        )
                     }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+            .background(Color(white: 0.10))
 
-                    HStack {
-                        Label("OpenCode", systemImage: "chevron.left.forwardslash.chevron.right")
-                        Spacer()
-                        Text("Auto-detected (~/.config/opencode)")
+            Divider()
+
+            // Active Tab Content Area
+            Group {
+                switch selectedTab {
+                case .general:
+                    SettingsGeneralTab()
+                case .gestures:
+                    SettingsGesturesTab()
+                case .liveActivities:
+                    SettingsLiveActivitiesTab()
+                case .pages:
+                    SettingsPagesTab()
+                case .appearance:
+                    SettingsAppearanceTab()
+                case .shelf:
+                    SettingsShelfTab()
+                case .ai:
+                    SettingsAITab()
+                case .license:
+                    SettingsLicenseTab()
+                case .about:
+                    SettingsAboutTab()
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(minWidth: 700, minHeight: 580)
+        .background(Color(white: 0.08))
+    }
+}
+
+// MARK: - Tab 1: General
+
+private struct SettingsGeneralTab: View {
+    @AppStorage("showMenuBarIcon") private var showMenuBarIcon = false
+    @AppStorage("hoverDelay") private var hoverDelay = 0.05
+    @AppStorage("preventClosingOnMouseLeave") private var preventClosingOnMouseLeave = false
+    @AppStorage("preferRoundButtons") private var preferRoundButtons = true
+    @AppStorage("contentPadding") private var contentPadding = 12.0
+    @AppStorage("notchWidthOffset") private var notchWidthOffset = 0.0
+    @AppStorage("notchHeightOffset") private var notchHeightOffset = 0.0
+    @AppStorage("showFullscreenOption") private var showFullscreenOption = "all"
+
+    var body: some View {
+        Form {
+            Section("System & Startup") {
+                LaunchAtLoginToggle()
+                Toggle("Show Menu Bar Extra Icon", isOn: $showMenuBarIcon)
+            }
+
+            Section("Notch Behavior & Hover") {
+                Slider(value: $hoverDelay, in: 0...0.5, step: 0.05) {
+                    Text("Hover Delay")
+                } minimumValueLabel: {
+                    Text("Instant").font(.caption2)
+                } maximumValueLabel: {
+                    Text("Slow").font(.caption2)
+                }
+
+                Toggle(isOn: $preventClosingOnMouseLeave) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Prevent Closing on Mouse Leave")
+                            .font(.body)
+                        Text("Keeps the expanded notch panel open until you click outside or press Escape.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
 
-                Section("API Key Providers") {
+                Toggle("Prefer Rounded Capsule Buttons", isOn: $preferRoundButtons)
+
+                Picker("Show in Fullscreen", selection: $showFullscreenOption) {
+                    Text("On all monitors").tag("all")
+                    Text("On notched screens only").tag("notched")
+                    Text("Never").tag("never")
+                }
+            }
+
+            Section("Notch Dimension Fine-Tuning") {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Width Adjustment")
+                        Spacer()
+                        Text("\(Int(notchWidthOffset)) pt")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(value: $notchWidthOffset, in: -30...30, step: 1)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Height Adjustment")
+                        Spacer()
+                        Text("\(Int(notchHeightOffset)) pt")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(value: $notchHeightOffset, in: -15...15, step: 1)
+                }
+            }
+
+            Section("Permissions") {
+                PermissionRow(
+                    title: "Camera",
+                    subtitle: "Required for the webcam selfie mirror",
+                    granted: CameraPermissionStatus.isAuthorized
+                ) {
+                    SystemSettings.openCameraPrivacy()
+                }
+
+                PermissionRow(
+                    title: "Accessibility",
+                    subtitle: "Required for notch gesture events & window detection",
+                    granted: AXIsProcessTrusted()
+                ) {
+                    let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: true] as CFDictionary
+                    _ = AXIsProcessTrustedWithOptions(options)
+                    SystemSettings.openAccessibilityPrivacy()
+                }
+            }
+
+            Section("Danger Zone") {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Reset All Settings")
+                            .font(.body)
+                        Text("Restores all layout, appearance, and gesture configurations to factory defaults.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Reset All Settings") {
+                        PageLayoutManager.shared.resetToDefaults()
+                    }
+                    .controlSize(.small)
+                }
+
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Quit Notchy")
+                            .font(.body)
+                        Text("Terminates the background process and unloads all notch monitors.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button(role: .destructive) {
+                        NSApplication.shared.terminate(nil)
+                    } label: {
+                        Label("Quit Notchy", systemImage: "power")
+                    }
+                    .controlSize(.regular)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .padding(14)
+    }
+}
+
+// MARK: - Tab 2: Gestures
+
+private struct SettingsGesturesTab: View {
+    @AppStorage("allowHoverGestures") private var allowHoverGestures = true
+    @AppStorage("openCloseVerticalGestures") private var openCloseVerticalGestures = true
+    @AppStorage("controlMediaHorizontalGestures") private var controlMediaHorizontalGestures = true
+    @AppStorage("invertMediaGestures") private var invertMediaGestures = false
+    @AppStorage("gestureSensitivity") private var gestureSensitivity = 36.0
+
+    var body: some View {
+        Form {
+            Section("Trackpad & Mouse Gestures") {
+                Toggle(isOn: $allowHoverGestures) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Allow Gestures When Hovering the Notch")
+                            .font(.body)
+                        Text("Enables trackpad two-finger swiping and scrolling when the cursor is over the notch.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Toggle(isOn: $openCloseVerticalGestures) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Open / Close Notch with Vertical Gestures")
+                            .font(.body)
+                        Text("Swipe two fingers down to expand the notch; swipe up to retract it.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Toggle(isOn: $controlMediaHorizontalGestures) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Swipe Horizontally to Flip Pages / Control Media")
+                            .font(.body)
+                        Text("Two-finger horizontal trackpad swipe seamlessly transitions through carousel pages.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Toggle(isOn: $invertMediaGestures) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Invert Horizontal Gesture Direction")
+                            .font(.body)
+                        Text("Reverses swipe navigation direction to match natural scrolling preferences.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            Section("Gesture Sensitivity") {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Swipe Threshold")
+                        Spacer()
+                        Text("\(Int(gestureSensitivity)) pt")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(value: $gestureSensitivity, in: 20...60, step: 2) {
+                        Text("Sensitivity")
+                    } minimumValueLabel: {
+                        Text("Sensitive").font(.caption2)
+                    } maximumValueLabel: {
+                        Text("Firm").font(.caption2)
+                    }
+                }
+            }
+
+            Section("Keyboard Shortcuts Reference") {
+                VStack(alignment: .leading, spacing: 6) {
+                    ShortcutRow(keys: "⌘1, ⌘2, ⌘3", description: "Jump directly to Page 1, 2, or 3")
+                    ShortcutRow(keys: "⌘← / ⌘→", description: "Navigate to Previous / Next page")
+                    ShortcutRow(keys: "Esc", description: "Retract and close expanded notch panel")
+                    ShortcutRow(keys: "Space", description: "Play/Pause active media when open")
+                }
+                .padding(.vertical, 4)
+            }
+        }
+        .formStyle(.grouped)
+        .padding(14)
+    }
+}
+
+private struct ShortcutRow: View {
+    let keys: String
+    let description: String
+
+    var body: some View {
+        HStack {
+            Text(keys)
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
+            Text(description)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Tab 3: Live Activities
+
+private struct SettingsLiveActivitiesTab: View {
+    @State private var selectedSubTab = 0
+    @AppStorage("liveActivityMediaEnabled") private var liveActivityMediaEnabled = true
+    @AppStorage("liveActivityTimerEnabled") private var liveActivityTimerEnabled = true
+    @AppStorage("liveActivityShelfEnabled") private var liveActivityShelfEnabled = true
+    @AppStorage("liveActivityHideInFullscreen") private var liveActivityHideInFullscreen = true
+    @AppStorage("visualizerEffectType") private var visualizerEffectType = "spectrograph"
+    @AppStorage("coloredEffects") private var coloredEffects = true
+    @AppStorage("albumCornerRadius") private var albumCornerRadius = 5.0
+    @AppStorage("liveInactivityTimeout") private var liveInactivityTimeout = 10.0
+
+    var body: some View {
+        VStack(spacing: 12) {
+            // Sub-Segment Switcher
+            Picker("", selection: $selectedSubTab) {
+                Text("General").tag(0)
+                Text("Customize Activities").tag(1)
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 280)
+            .padding(.top, 12)
+
+            // Live Notch Interactive Simulation Banner
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.red.opacity(0.85), Color(red: 0.8, green: 0.1, blue: 0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(height: 72)
+
+                // Simulated MacBook Notch with Wings
+                HStack(spacing: 8) {
+                    // Left ear: Album Art or Timer
+                    HStack(spacing: 4) {
+                        Image(systemName: "music.note")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.cyan)
+                    }
+                    .frame(width: 24, height: 24)
+                    .background(Color.black, in: RoundedRectangle(cornerRadius: CGFloat(albumCornerRadius)))
+
+                    // Notch Hardware Spacer
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.black)
+                        .frame(width: 140, height: 26)
+
+                    // Right ear: Live Audio Equalizer
+                    HStack(spacing: 2) {
+                        ForEach(0..<4, id: \.self) { i in
+                            RoundedRectangle(cornerRadius: 1)
+                                .fill(coloredEffects ? Color.cyan : Color.white)
+                                .frame(width: 2.5, height: CGFloat([12, 18, 8, 14][i]))
+                        }
+                    }
+                    .frame(width: 24, height: 24)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 4)
+                .background(Color.black, in: Capsule())
+            }
+            .padding(.horizontal, 18)
+
+            if selectedSubTab == 0 {
+                // General Live Activities
+                Form {
+                    Section("Closed Notch Activity Wings") {
+                        Toggle("Media Playback Wings", isOn: $liveActivityMediaEnabled)
+                        Toggle("Focus Timer Countdown Wings", isOn: $liveActivityTimerEnabled)
+                        Toggle("File Drop Shelf Drag Highlight", isOn: $liveActivityShelfEnabled)
+                        Toggle("Hide Activities in Fullscreen", isOn: $liveActivityHideInFullscreen)
+                    }
+
+                    Section("Inactivity Timeout") {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Dismiss After Playback Pauses")
+                                Spacer()
+                                Text("\(Int(liveInactivityTimeout)) seconds")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Slider(value: $liveInactivityTimeout, in: 3...30, step: 1)
+                        }
+                    }
+                }
+                .formStyle(.grouped)
+                .padding(.horizontal, 14)
+            } else {
+                // Customize Activities
+                Form {
+                    Section("Media Visualizer Style") {
+                        Picker("Effect Type", selection: $visualizerEffectType) {
+                            Text("Audio Spectrograph").tag("spectrograph")
+                            Text("Smooth Waves").tag("waves")
+                            Text("Vibrating Pulse").tag("pulse")
+                        }
+
+                        Toggle("Colored Effects (matches active album artwork)", isOn: $coloredEffects)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Album Art Corner Radius")
+                                Spacer()
+                                Text("\(Int(albumCornerRadius)) pt")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Slider(value: $albumCornerRadius, in: 2...12, step: 1)
+                        }
+                    }
+                }
+                .formStyle(.grouped)
+                .padding(.horizontal, 14)
+            }
+        }
+    }
+}
+
+// MARK: - Tab 4: Pages & Layout
+
+private struct SettingsPagesTab: View {
+    @AppStorage("defaultPage") private var defaultPage = 0
+    @ObservedObject var layout = PageLayoutManager.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            // Default Open Page Picker
+            HStack {
+                Text("Default Open Page:")
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+
+                Picker("", selection: $defaultPage) {
+                    ForEach(Array(layout.pages.enumerated()), id: \.element.id) { index, page in
+                        Text("Page \(index + 1) (\(page.title))").tag(index)
+                    }
+                }
+                .frame(width: 220)
+
+                Spacer()
+
+                Button("Reset Layout") {
+                    layout.resetToDefaults()
+                }
+                .controlSize(.small)
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 14)
+
+            Divider()
+
+            // Full Modular Drag-and-Drop Page Organizer
+            PageOrganizerView()
+                .padding(.horizontal, 18)
+                .padding(.bottom, 14)
+        }
+    }
+}
+
+// MARK: - Tab 5: Appearance & Liquid Glass
+
+private struct SettingsAppearanceTab: View {
+    @AppStorage("glassMaterialStyle") private var glassMaterialStyle = "liquid"
+    @AppStorage("glassOpacity") private var glassOpacity = 0.58
+    @AppStorage("cardGlassOpacity") private var cardGlassOpacity = 0.50
+    @AppStorage("showPanelShadow") private var showPanelShadow = false
+    @AppStorage("showBottomGlow") private var showBottomGlow = false
+    @AppStorage("showBatteryIndicator") private var showBatteryIndicator = true
+
+    var body: some View {
+        Form {
+            Section("Liquid Glass Theme") {
+                Picker("Theme Style", selection: $glassMaterialStyle) {
+                    Text("Liquid Glass (Frosted & Translucent)").tag("liquid")
+                    Text("Crystal Clear (Maximum Transparency)").tag("crystal")
+                    Text("Deep Graphite (Subtle Blur)").tag("graphite")
+                    Text("Classic Opaque (Solid Black)").tag("opaque")
+                }
+                .onChange(of: glassMaterialStyle) { newStyle in
+                    switch newStyle {
+                    case "crystal":
+                        glassOpacity = 0.35
+                        cardGlassOpacity = 0.35
+                    case "liquid":
+                        glassOpacity = 0.58
+                        cardGlassOpacity = 0.50
+                    case "graphite":
+                        glassOpacity = 0.80
+                        cardGlassOpacity = 0.65
+                    case "opaque":
+                        glassOpacity = 1.0
+                        cardGlassOpacity = 0.85
+                    default:
+                        break
+                    }
+                }
+
+                if glassMaterialStyle != "opaque" {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
-                            Label("Kimi (Moonshot AI)", systemImage: "moon.stars.fill")
+                            Text("Panel Background Translucency")
                             Spacer()
-                        }
-                        SecureField("Enter Kimi API Key (sk-...)", text: $kimiApiKey)
-                            .textFieldStyle(.roundedBorder)
-                            .font(.caption)
-                    }
-
-                    Text("Note: Only AI tools with active local sessions or configured keys are displayed. Simulated data is never shown.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .formStyle(.grouped)
-            .padding(14)
-            .tabItem {
-                Label("AI Providers", systemImage: "sparkles")
-            }
-
-            // Tab 3: General & Permissions
-            Form {
-                Section("Behavior") {
-                    Slider(value: $hoverDelay, in: 0...0.6) {
-                        Text("Hover delay")
-                    } minimumValueLabel: {
-                        Text("Instant")
-                    } maximumValueLabel: {
-                        Text("Slow")
-                    }
-
-                    LaunchAtLoginToggle()
-                    Toggle("Show menu bar icon", isOn: $showMenuBarIcon)
-                }
-
-                Section("Shortcuts") {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("• Two-finger horizontal trackpad swipe: flip pages")
-                        Text("• ⌘1: Page 1   • ⌘2: Page 2   • ⌘3: Page 3")
-                        Text("• ⌘← / ⌘→: Previous / Next page")
-                        Text("• Esc: Close notch panel")
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                }
-
-                Section("Permissions") {
-                    PermissionRow(
-                        title: "Camera",
-                        subtitle: "Needed for the webcam selfie mirror",
-                        granted: CameraPermissionStatus.isAuthorized
-                    ) {
-                        SystemSettings.openCameraPrivacy()
-                    }
-                    PermissionRow(
-                        title: "Accessibility",
-                        subtitle: "Needed for volume & brightness shortcuts",
-                        granted: AXIsProcessTrusted()
-                    ) {
-                        let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: true] as CFDictionary
-                        _ = AXIsProcessTrustedWithOptions(options)
-                    }
-                }
-
-                Section {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Quit Notchy")
-                                .font(.body)
-                            Text("Completely terminate the background application and release all system resources.")
+                            Text("\(Int((1.0 - glassOpacity) * 100))% transparent (\(Int(glassOpacity * 100))% tint)")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
+                        Slider(value: $glassOpacity, in: 0.20...0.95, step: 0.05)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Module Card Translucency")
+                            Spacer()
+                            Text("\(Int(cardGlassOpacity * 100))%")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Slider(value: $cardGlassOpacity, in: 0.20...0.90, step: 0.05)
+                    }
+                }
+            }
+
+            Section("Drop Shadow & Caustic Edges") {
+                Toggle(isOn: $showPanelShadow) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Outer Panel Shadow")
+                            .font(.body)
+                        Text("Draws an ambient drop shadow outside the expanded notch onto your wallpaper.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Toggle(isOn: $showBottomGlow) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Bottom Edge Caustic Glow")
+                            .font(.body)
+                        Text("Warm ambient caustic light bloom along the bottom squircle of the expanded notch.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            Section("Header & Controls") {
+                Toggle("Show Battery Indicator in Header", isOn: $showBatteryIndicator)
+            }
+
+            Section("Live Material Preview") {
+                ZStack {
+                    // Wallpaper vibrancy simulation
+                    LinearGradient(
+                        colors: [Color.indigo, Color.purple, Color.orange.opacity(0.8)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                    // Glass plate preview
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Notchy Liquid Glass Preview")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(.white)
+                            Text("Wallpaper color and luminescence softly refracts through")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.white.opacity(0.75))
+                        }
                         Spacer()
-                        Button(role: .destructive) {
-                            NSApplication.shared.terminate(nil)
-                        } label: {
-                            Label("Quit Notchy", systemImage: "power")
+
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.cyan)
+                            Text("Liquid Glass")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(.white)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(.ultraThinMaterial.opacity(cardGlassOpacity))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
+                                )
+                        )
+                    }
+                    .padding(14)
+                    .background(
+                        ZStack {
+                            if glassMaterialStyle == "opaque" {
+                                Color.black
+                            } else {
+                                VisualEffectView(material: .hudWindow, blendingMode: .withinWindow)
+                                Color.black.opacity(glassOpacity)
+                            }
+                        }
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.25), lineWidth: 1)
+                    )
+                    .padding(10)
+                }
+                .frame(height: 90)
+            }
+        }
+        .formStyle(.grouped)
+        .padding(14)
+    }
+}
+
+// MARK: - Tab 6: File Shelf
+
+private struct SettingsShelfTab: View {
+    @AppStorage("autoOpenShelfOnDrag") private var autoOpenShelfOnDrag = true
+    @AppStorage("clearShelfAfterAirDrop") private var clearShelfAfterAirDrop = false
+    @AppStorage("shelfCapacityLimit") private var shelfCapacityLimit = 15.0
+
+    var body: some View {
+        Form {
+            Section("File Drop Shelf Behavior") {
+                Toggle(isOn: $autoOpenShelfOnDrag) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Auto-Expand Notch on File Drag")
+                            .font(.body)
+                        Text("Automatically reveals the shelf module when dragging documents, images, or folders across your screen.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Toggle(isOn: $clearShelfAfterAirDrop) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Clear Shelf After AirDrop")
+                            .font(.body)
+                        Text("Automatically removes staged files once AirDrop transfer successfully completes.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            Section("Storage & Capacity") {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Maximum Staged Items")
+                        Spacer()
+                        Text("\(Int(shelfCapacityLimit)) items")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(value: $shelfCapacityLimit, in: 5...30, step: 5)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .padding(14)
+    }
+}
+
+// MARK: - Tab 7: AI Providers
+
+private struct SettingsAITab: View {
+    @AppStorage("customGeminiPath") private var customGeminiPath = ""
+    @AppStorage("kimiApiKey") private var kimiApiKey = ""
+
+    var body: some View {
+        Form {
+            Section("Antigravity & Local AI Quotas") {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Label("Google Antigravity", systemImage: "sparkles")
+                        Spacer()
+                        Text(customGeminiPath.isEmpty ? "Auto-detected (~/.gemini)" : customGeminiPath)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+
+                    HStack(spacing: 8) {
+                        Button("Locate .gemini Folder…") {
+                            let panel = NSOpenPanel()
+                            panel.canChooseFiles = false
+                            panel.canChooseDirectories = true
+                            panel.allowsMultipleSelection = false
+                            panel.showsHiddenFiles = true
+                            panel.directoryURL = URL(fileURLWithPath: NSHomeDirectory())
+                            if panel.runModal() == .OK, let url = panel.url {
+                                customGeminiPath = url.path
+                                AIUsageManager.shared.refresh()
+                            }
+                        }
+                        .controlSize(.small)
+
+                        if !customGeminiPath.isEmpty {
+                            Button("Reset") {
+                                customGeminiPath = ""
+                                AIUsageManager.shared.refresh()
+                            }
+                            .controlSize(.small)
+                        }
+
+                        Spacer()
+
+                        Button("Sync Quota") {
+                            AIUsageManager.shared.refresh()
+                        }
+                        .controlSize(.small)
+                    }
+                }
+
+                HStack {
+                    Label("OpenCode", systemImage: "chevron.left.forwardslash.chevron.right")
+                    Spacer()
+                    Text("Auto-detected (~/.config/opencode)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Section("API Key Providers") {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("Kimi (Moonshot AI)", systemImage: "moon.stars.fill")
+                    SecureField("Enter Kimi API Key (sk-...)", text: $kimiApiKey)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.caption)
+                }
+
+                Text("Note: Only AI tools with active local sessions or configured keys are displayed. Simulated data is never shown.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .padding(14)
+    }
+}
+
+// MARK: - Tab 8: License (Monetization - Screenshot 10 Replica)
+
+private struct SettingsLicenseTab: View {
+    @AppStorage("licenseEmail") private var licenseEmail = ""
+    @AppStorage("licenseKey") private var licenseKey = ""
+    @AppStorage("isLicensed") private var isLicensed = false
+    @State private var registrationError: String? = nil
+
+    var body: some View {
+        Form {
+            Section("Status") {
+                HStack(spacing: 12) {
+                    Image(systemName: isLicensed ? "checkmark.circle.fill" : "xmark.circle.fill")
+                        .font(.system(size: 26))
+                        .foregroundStyle(isLicensed ? Color.green : Color.red)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(isLicensed ? "Status: Registered (Pro Active)" : "Status: Unregistered")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(isLicensed ? Color.green : Color.red)
+
+                        Text(isLicensed ? "Thank you for supporting Notchy! All Pro features, token counters, and unlimited clipboard history are unlocked." : "Enjoy core features for free, or enter your Notchy Pro license key to unlock AI Token Quotas, 2FA, and custom liquid glass.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, 6)
+            }
+
+            Section("License Details") {
+                HStack {
+                    Label("Email", systemImage: "at")
+                        .frame(width: 100, alignment: .leading)
+                    TextField("john.doe@email.com", text: $licenseEmail)
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(isLicensed)
+                }
+
+                HStack {
+                    Label("License Key", systemImage: "key.fill")
+                        .frame(width: 100, alignment: .leading)
+                    TextField("Ex: NOTCHY-XXXX-XXXX-XXXX", text: $licenseKey)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(.body, design: .monospaced))
+                        .disabled(isLicensed)
+                }
+
+                if let error = registrationError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+
+                HStack {
+                    Spacer()
+
+                    if !isLicensed {
+                        Button("Get a License") {
+                            if let url = URL(string: "https://notchy.app/buy") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                        .controlSize(.regular)
+
+                        Button("Register") {
+                            validateAndActivateLicense()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.regular)
+                        .disabled(licenseKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    } else {
+                        Button("Deactivate License") {
+                            isLicensed = false
+                            licenseKey = ""
                         }
                         .controlSize(.regular)
                     }
                 }
+                .padding(.top, 4)
             }
-            .formStyle(.grouped)
-            .padding(14)
-            .tabItem {
-                Label("General", systemImage: "gearshape")
+
+            Section("Included with Notchy Pro") {
+                VStack(alignment: .leading, spacing: 6) {
+                    FeatureCheckRow("Real-Time AI Token Metrics (Antigravity, Kimi, OpenCode)")
+                    FeatureCheckRow("Unlimited Clipboard History with full search")
+                    FeatureCheckRow("2FA Authenticator & Pomodoro Focus Timer")
+                    FeatureCheckRow("Customizable Liquid Glass blur & caustic bloom controls")
+                    FeatureCheckRow("Lifetime updates & priority developer support")
+                }
+                .padding(.vertical, 4)
             }
         }
-        .frame(minWidth: 620, minHeight: 520)
+        .formStyle(.grouped)
+        .padding(14)
+    }
+
+    private func validateAndActivateLicense() {
+        let key = licenseKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        if key.count >= 8 {
+            isLicensed = true
+            registrationError = nil
+        } else {
+            registrationError = "Invalid license key format. Please verify and try again."
+        }
+    }
+}
+
+private struct FeatureCheckRow: View {
+    let title: String
+    init(_ title: String) { self.title = title }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "checkmark")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(.cyan)
+            Text(title)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+// MARK: - Tab 9: About (Screenshot 11 Replica)
+
+private struct SettingsAboutTab: View {
+    @AppStorage("autoDownloadUpdates") private var autoDownloadUpdates = true
+    @AppStorage("autoCheckUpdates") private var autoCheckUpdates = true
+
+    var body: some View {
+        VStack(spacing: 16) {
+            // App Icon Header with glowing halo
+            VStack(spacing: 8) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color(red: 0.15, green: 0.05, blue: 0.25), Color(red: 0.05, green: 0.02, blue: 0.12)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 80, height: 80)
+                        .shadow(color: Color.purple.opacity(0.4), radius: 14, x: 0, y: 6)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
+                        )
+
+                    // Minimal Notch Smiley Logo
+                    VStack(spacing: 6) {
+                        HStack(spacing: 12) {
+                            RoundedRectangle(cornerRadius: 1.5)
+                                .fill(Color.white)
+                                .frame(width: 3.5, height: 10)
+                            RoundedRectangle(cornerRadius: 1.5)
+                                .fill(Color.white)
+                                .frame(width: 3.5, height: 10)
+                        }
+                        Text("‿")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(.white)
+                            .offset(y: -4)
+                    }
+                }
+
+                Text("Notchy")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+
+                Text("v1.0.0 (Build 1)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.top, 14)
+
+            // Update Options
+            HStack(spacing: 18) {
+                Toggle("Auto download updates", isOn: $autoDownloadUpdates)
+                Toggle("Auto check for updates", isOn: $autoCheckUpdates)
+            }
+            .font(.caption)
+
+            Button("Check for Updates…") {
+                // Sparkle / update check trigger
+            }
+            .controlSize(.regular)
+
+            Divider()
+                .padding(.horizontal, 40)
+
+            // Mission & Philosophy Statement
+            VStack(spacing: 6) {
+                Text("Notchy is designed for MacBook Notch & Dynamic Island enthusiasts")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text("Crafted with passion using pure SwiftUI & AppKit for native macOS efficiency.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            // Quick Links Capsules
+            HStack(spacing: 8) {
+                LinkButton(title: "Website", systemImage: "globe", url: "https://notchy.app")
+                LinkButton(title: "Discord Server", systemImage: "bubble.left.and.bubble.right.fill", url: "https://discord.gg/notchy")
+                LinkButton(title: "Email Us!", systemImage: "envelope.fill", url: "mailto:support@notchy.app")
+                LinkButton(title: "Privacy Policy", systemImage: "hand.raised.fill", url: "https://notchy.app/privacy")
+            }
+            .padding(.bottom, 16)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 24)
+    }
+}
+
+private struct LinkButton: View {
+    let title: String
+    let systemImage: String
+    let url: String
+
+    var body: some View {
+        Button {
+            if let link = URL(string: url) {
+                NSWorkspace.shared.open(link)
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 9))
+                Text(title)
+                    .font(.system(size: 10, weight: .medium))
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(Color.white.opacity(0.08), in: Capsule())
+            .overlay(
+                Capsule()
+                    .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.75)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 

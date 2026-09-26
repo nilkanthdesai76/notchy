@@ -68,10 +68,12 @@ final class NotchHostingView<Content: View>: NSHostingView<Content> {
         if event.modifierFlags.contains(.shift) {
             let delta = abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY) ? event.scrollingDeltaX : event.scrollingDeltaY
             guard abs(delta) > 1.0 else { return }
-            if delta < 0 {
-                vm.advancePage()
-            } else {
-                vm.rewindPage()
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                if delta < 0 {
+                    vm.advancePage()
+                } else {
+                    vm.rewindPage()
+                }
             }
             return
         }
@@ -89,14 +91,16 @@ final class NotchHostingView<Content: View>: NSHostingView<Content> {
         swipeAccumY += event.scrollingDeltaY
 
         if event.phase == .ended {
-            let threshold: CGFloat = 45
+            let threshold: CGFloat = 36
             defer { swipeAccumX = 0; swipeAccumY = 0 }
             guard abs(swipeAccumX) > abs(swipeAccumY), abs(swipeAccumX) > threshold else { return }
 
-            if swipeAccumX < 0 {
-                vm.advancePage()
-            } else {
-                vm.rewindPage()
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                if swipeAccumX < 0 {
+                    vm.advancePage()
+                } else {
+                    vm.rewindPage()
+                }
             }
         }
     }

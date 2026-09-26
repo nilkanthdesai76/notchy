@@ -479,8 +479,9 @@ private struct NotchExpandedContent: View {
             } else {
                 HStack(alignment: .top, spacing: 0) {
                     ForEach(activePages) { page in
-                        renderDynamicPage(page: page, width: pageWidth)
+                        NotchPageView(page: page, width: pageWidth)
                             .frame(width: pageWidth, height: 165)
+                            .compositingGroup()
                     }
                 }
                 .frame(width: pageWidth, alignment: .leading)
@@ -494,10 +495,18 @@ private struct NotchExpandedContent: View {
         .padding(.bottom, 12)
         .frame(width: viewModel.openWidth, height: viewModel.contentHeight, alignment: .top)
     }
+}
 
-    // MARK: - Dynamic Page Rendering
-    @ViewBuilder
-    private func renderDynamicPage(page: PageConfig, width: CGFloat) -> some View {
+// MARK: - Dedicated Page View with Equatable Layer Caching
+private struct NotchPageView: View, Equatable {
+    let page: PageConfig
+    let width: CGFloat
+
+    static func == (lhs: NotchPageView, rhs: NotchPageView) -> Bool {
+        lhs.page == rhs.page && lhs.width == rhs.width
+    }
+
+    var body: some View {
         if page.modules.isEmpty {
             VStack(spacing: 6) {
                 Image(systemName: "plus.square.dashed")
@@ -537,6 +546,7 @@ private struct NotchExpandedContent: View {
                     )
 
                     moduleView(for: module)
+                        .id("\(page.id)_\(module.rawValue)")
                         .environment(\.moduleCornerRadii, radii)
                         .frame(width: itemWidth, height: 165)
                 }
