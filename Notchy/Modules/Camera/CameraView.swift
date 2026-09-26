@@ -12,6 +12,7 @@ import Combine
 struct CameraView: View {
     @EnvironmentObject private var camera: CameraManager
     @Environment(\.moduleCornerRadii) private var radii
+    @Environment(\.cardSlotCount) private var cardSlotCount
     @State private var isHovered = false
 
     var body: some View {
@@ -57,6 +58,45 @@ struct CameraView: View {
                                 .transition(.opacity.combined(with: .scale(scale: 0.9)))
                             }
                         }
+                } else if cardSlotCount == 1 {
+                    // Wide Solo Standby Card
+                    VStack(spacing: 10) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.white.opacity(isHovered ? 0.14 : 0.08))
+                                .frame(width: 44, height: 44)
+                            Image(systemName: camera.authorization == .denied ? "exclamationmark.triangle.fill" : "video.fill")
+                                .font(.system(size: 18))
+                                .foregroundStyle(camera.authorization == .denied ? .orange : (isHovered ? .white : .white.opacity(0.8)))
+                        }
+
+                        VStack(spacing: 3) {
+                            Text(camera.authorization == .denied ? "Camera Access Denied" : "Selfie Mirror Standby")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.white)
+
+                            Text(camera.authorization == .denied ? "Click to open System Settings" : "Click anywhere to activate live selfie mirror")
+                                .font(.system(size: 9.5))
+                                .foregroundStyle(.white.opacity(0.5))
+                        }
+
+                        HStack(spacing: 5) {
+                            Image(systemName: camera.authorization == .denied ? "gear" : "play.fill")
+                                .font(.system(size: 9, weight: .bold))
+                            Text(camera.authorization == .denied ? "Open Privacy Settings" : "Start Mirror")
+                                .font(.system(size: 10, weight: .semibold))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 5.5)
+                        .background(camera.authorization == .denied ? Color.orange.opacity(0.25) : Color.white.opacity(0.12), in: Capsule())
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
+                        )
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .liquidGlassPod()
                 } else {
                     VStack(spacing: 6) {
                         ZStack {

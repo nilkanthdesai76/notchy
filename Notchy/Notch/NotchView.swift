@@ -206,61 +206,6 @@ struct NotchView: View {
                 }
             )
             .clipShape(shape)
-            .overlay(
-                // Liquid Glass Rim Styling - only shown when open!
-                Group {
-                    if viewModel.isOpen {
-                        if showBottomGlow {
-                            // Ambient caustic optical bloom along the bottom squircle
-                            shape.stroke(
-                                LinearGradient(
-                                    stops: [
-                                        .init(color: Color.clear, location: 0.0),
-                                        .init(color: Color.clear, location: 0.65),
-                                        .init(color: Color(red: 1.0, green: 0.85, blue: 0.70).opacity(0.35), location: 0.94),
-                                        .init(color: Color.white.opacity(0.55), location: 1.0)
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                ),
-                                lineWidth: 3.5
-                            )
-                            .blur(radius: 2)
-
-                            // Caustic stroke with warm refractive focus
-                            shape.stroke(
-                                LinearGradient(
-                                    stops: [
-                                        .init(color: Color.white.opacity(0.32), location: 0.0),      // Top specular rim
-                                        .init(color: Color.white.opacity(0.14), location: 0.25),     // Upper sides
-                                        .init(color: Color.white.opacity(0.18), location: 0.70),     // Lower sides
-                                        .init(color: Color(red: 1.0, green: 0.90, blue: 0.80).opacity(0.70), location: 0.93), // Radiant caustic light
-                                        .init(color: Color.white.opacity(0.90), location: 1.0)       // Bottom caustic focus
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                ),
-                                lineWidth: 1.2
-                            )
-                        } else {
-                            // Clean subtle specular glass rim with zero bottom glow
-                            shape.stroke(
-                                LinearGradient(
-                                    stops: [
-                                        .init(color: Color.white.opacity(0.28), location: 0.0),
-                                        .init(color: Color.white.opacity(0.12), location: 0.25),
-                                        .init(color: Color.white.opacity(0.08), location: 0.70),
-                                        .init(color: Color.white.opacity(0.18), location: 1.0)
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                ),
-                                lineWidth: 1.0
-                            )
-                        }
-                    }
-                }
-            )
             .shadow(
                 color: (showPanelShadow && viewModel.isOpen) ? Color.black.opacity(0.35) : Color.clear,
                 radius: 20,
@@ -497,6 +442,26 @@ private struct NotchExpandedContent: View {
     }
 }
 
+struct CardSlotCountKey: EnvironmentKey {
+    static let defaultValue: Int = 3
+}
+
+struct CardWidthKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 190
+}
+
+extension EnvironmentValues {
+    var cardSlotCount: Int {
+        get { self[CardSlotCountKey.self] }
+        set { self[CardSlotCountKey.self] = newValue }
+    }
+
+    var cardWidth: CGFloat {
+        get { self[CardWidthKey.self] }
+        set { self[CardWidthKey.self] = newValue }
+    }
+}
+
 // MARK: - Dedicated Page View with Equatable Layer Caching
 private struct NotchPageView: View, Equatable {
     let page: PageConfig
@@ -548,6 +513,8 @@ private struct NotchPageView: View, Equatable {
                     moduleView(for: module)
                         .id("\(page.id)_\(module.rawValue)")
                         .environment(\.moduleCornerRadii, radii)
+                        .environment(\.cardSlotCount, count)
+                        .environment(\.cardWidth, itemWidth)
                         .frame(width: itemWidth, height: 165)
                 }
             }

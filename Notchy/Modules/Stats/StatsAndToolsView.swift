@@ -11,14 +11,26 @@ import Combine
 struct StatsAndToolsView: View {
     @ObservedObject var stats = SystemStatsManager.shared
     @ObservedObject var tools = QuickToolsManager.shared
+    @Environment(\.cardSlotCount) private var cardSlotCount
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: cardSlotCount == 1 ? 9 : 8) {
             // Header Row: Title + Battery
             HStack {
-                Label("System & Tools", systemImage: "cpu.fill")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.85))
+                HStack(spacing: 5) {
+                    Image(systemName: "cpu.fill")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.orange)
+                    Text("System & Tools")
+                        .font(.system(size: cardSlotCount == 1 ? 12 : 11, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+
+                if cardSlotCount == 1 {
+                    Text("• Live Apple Silicon Diagnostics")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.white.opacity(0.45))
+                }
 
                 Spacer()
 
@@ -35,10 +47,9 @@ struct StatsAndToolsView: View {
                 .background(Color.white.opacity(0.08), in: Capsule())
             }
 
-            // 2x2 Stats Grid
-            VStack(spacing: 6) {
-                HStack(spacing: 6) {
-                    // CPU Card
+            if cardSlotCount == 1 {
+                // Wide 4-Column Layout
+                HStack(spacing: 8) {
                     MetricCard(
                         icon: "gauge.with.needle.fill",
                         title: "CPU",
@@ -47,7 +58,6 @@ struct StatsAndToolsView: View {
                         color: stats.cpuUsage > 0.8 ? .red : (stats.cpuUsage > 0.5 ? .orange : .blue)
                     )
 
-                    // RAM Card
                     MetricCard(
                         icon: "memorychip",
                         title: "RAM",
@@ -56,10 +66,63 @@ struct StatsAndToolsView: View {
                         progress: stats.memoryPercentage,
                         color: stats.memoryPercentage > 0.85 ? .red : .purple
                     )
-                }
 
-                HStack(spacing: 6) {
-                    // Network Card
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.teal)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("DOWNLOAD")
+                                .font(.system(size: 7.5, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.4))
+                            Text(stats.netDownloadSpeed)
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundStyle(.white.opacity(0.9))
+                        }
+                    }
+                    .padding(8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.indigo)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("UPLOAD")
+                                .font(.system(size: 7.5, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.4))
+                            Text(stats.netUploadSpeed)
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundStyle(.white.opacity(0.9))
+                        }
+                    }
+                    .padding(8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+            } else {
+                // 2x2 Compact Stats Grid
+                VStack(spacing: 6) {
+                    HStack(spacing: 6) {
+                        MetricCard(
+                            icon: "gauge.with.needle.fill",
+                            title: "CPU",
+                            value: "\(Int(stats.cpuUsage * 100))%",
+                            progress: stats.cpuUsage,
+                            color: stats.cpuUsage > 0.8 ? .red : (stats.cpuUsage > 0.5 ? .orange : .blue)
+                        )
+
+                        MetricCard(
+                            icon: "memorychip",
+                            title: "RAM",
+                            value: String(format: "%.1f GB", stats.memoryUsedGB),
+                            subtitle: String(format: "/ %.0f GB", stats.memoryTotalGB),
+                            progress: stats.memoryPercentage,
+                            color: stats.memoryPercentage > 0.85 ? .red : .purple
+                        )
+                    }
+
                     HStack(spacing: 6) {
                         Image(systemName: "network")
                             .font(.system(size: 10))
@@ -154,7 +217,7 @@ struct StatsAndToolsView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .liquidGlassPod(cornerRadius: 16)
+        .liquidGlassPod()
     }
 }
 

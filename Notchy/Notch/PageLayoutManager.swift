@@ -174,9 +174,14 @@ final class PageLayoutManager: ObservableObject {
     // MARK: - Reordering & Transfer Operations
 
     func moveModule(_ module: NotchyModuleID, toPageIndex targetPageIndex: Int, atIndex targetIndex: Int? = nil) {
+        guard targetPageIndex >= 0 && targetPageIndex < pages.count else { return }
+        // Hard limit: max 3 modules per page
+        if pages[targetPageIndex].modules.count >= 3 && !pages[targetPageIndex].modules.contains(module) {
+            return
+        }
+
         removeModuleFromAll(module)
 
-        guard targetPageIndex >= 0 && targetPageIndex < pages.count else { return }
         if let targetIndex = targetIndex, targetIndex <= pages[targetPageIndex].modules.count {
             pages[targetPageIndex].modules.insert(module, at: targetIndex)
         } else {
@@ -197,8 +202,8 @@ final class PageLayoutManager: ObservableObject {
         if idx > 0 {
             pages[pageIndex].modules.swapAt(idx, idx - 1)
             saveLayout()
-        } else if pageIndex > 0 {
-            // Move to previous page
+        } else if pageIndex > 0 && pages[pageIndex - 1].modules.count < 3 {
+            // Move to previous page if it has room
             moveModule(module, toPageIndex: pageIndex - 1)
         }
     }
@@ -209,8 +214,8 @@ final class PageLayoutManager: ObservableObject {
         if idx < pages[pageIndex].modules.count - 1 {
             pages[pageIndex].modules.swapAt(idx, idx + 1)
             saveLayout()
-        } else if pageIndex < pages.count - 1 {
-            // Move to next page
+        } else if pageIndex < pages.count - 1 && pages[pageIndex + 1].modules.count < 3 {
+            // Move to next page if it has room
             moveModule(module, toPageIndex: pageIndex + 1, atIndex: 0)
         }
     }

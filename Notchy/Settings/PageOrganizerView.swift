@@ -114,9 +114,9 @@ private struct PageDropColumn: View {
 
                 Spacer()
 
-                Text("\(page.modules.count) items")
-                    .font(.system(size: 9.5))
-                    .foregroundStyle(.secondary)
+                Text("\(page.modules.count)/3")
+                    .font(.system(size: 9.5, weight: page.modules.count == 3 ? .semibold : .regular))
+                    .foregroundStyle(page.modules.count == 3 ? .orange : .secondary)
 
                 if canDelete {
                     Button {
@@ -143,7 +143,7 @@ private struct PageDropColumn: View {
                         Image(systemName: "plus.square.dashed")
                             .font(.system(size: 18))
                             .foregroundStyle(.secondary.opacity(0.6))
-                        Text("Drop modules here")
+                        Text("Drop modules here (max 3)")
                             .font(.system(size: 10))
                             .foregroundStyle(.secondary)
                     }
@@ -180,8 +180,10 @@ private struct PageDropColumn: View {
                 _ = provider.loadObject(ofClass: NSString.self) { string, _ in
                     guard let raw = string as? String, let module = NotchyModuleID(rawValue: raw) else { return }
                     Task { @MainActor in
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            layout.moveModule(module, toPageIndex: pageIndex)
+                        if layout.pages[pageIndex].modules.count < 3 || layout.pages[pageIndex].modules.contains(module) {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                layout.moveModule(module, toPageIndex: pageIndex)
+                            }
                         }
                     }
                 }
@@ -318,10 +320,12 @@ private struct UnassignedShelfView: View {
                                     .font(.system(size: 10, weight: .medium))
 
                                 Menu {
-                                    ForEach(Array(layout.pages.enumerated()), id: \.element.id) { pIndex, _ in
-                                        Button("Add to Page \(pIndex + 1)") {
-                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                                layout.moveModule(module, toPageIndex: pIndex)
+                                    ForEach(Array(layout.pages.enumerated()), id: \.element.id) { pIndex, page in
+                                        if page.modules.count < 3 {
+                                            Button("Add to Page \(pIndex + 1) (\(page.modules.count)/3)") {
+                                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                                    layout.moveModule(module, toPageIndex: pIndex)
+                                                }
                                             }
                                         }
                                     }

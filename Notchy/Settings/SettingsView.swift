@@ -877,17 +877,6 @@ private struct SettingsLicenseTab: View {
                 }
                 .padding(.top, 4)
             }
-
-            Section("Included with Notchy Pro") {
-                VStack(alignment: .leading, spacing: 6) {
-                    FeatureCheckRow("Real-Time AI Token Metrics (11 Providers Supported)")
-                    FeatureCheckRow("Unlimited Clipboard History with full search")
-                    FeatureCheckRow("2FA Authenticator & Pomodoro Focus Timer")
-                    FeatureCheckRow("Customizable Liquid Glass blur & caustic bloom controls")
-                    FeatureCheckRow("Lifetime updates & priority developer support")
-                }
-                .padding(.vertical, 4)
-            }
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
@@ -905,22 +894,6 @@ private struct SettingsLicenseTab: View {
     }
 }
 
-private struct FeatureCheckRow: View {
-    let title: String
-    init(_ title: String) { self.title = title }
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "checkmark")
-                .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(.cyan)
-            Text(title)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-        }
-    }
-}
-
 // MARK: - Tab 8: About
 
 private struct SettingsAboutTab: View {
@@ -928,114 +901,204 @@ private struct SettingsAboutTab: View {
     @AppStorage("autoCheckUpdates") private var autoCheckUpdates = true
     @State private var showingUpdateAlert = false
     @State private var isCheckingUpdates = false
+    @State private var updateMessage = "Notchy v1.0.0 is currently the newest version available."
 
     var body: some View {
-        VStack(spacing: 16) {
-            // App Icon Header with glowing halo
-            VStack(spacing: 8) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color(red: 0.15, green: 0.05, blue: 0.25), Color(red: 0.05, green: 0.02, blue: 0.12)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: 20) {
+                // App Logo & Header Card
+                VStack(spacing: 12) {
+                    // Notchy App Icon
+                    Image(nsImage: NSApplication.shared.applicationIconImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
                         .frame(width: 80, height: 80)
-                        .shadow(color: Color.purple.opacity(0.4), radius: 14, x: 0, y: 6)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
-                        )
+                        .shadow(color: Color.black.opacity(0.4), radius: 14, x: 0, y: 6)
 
-                    // Minimal Notch Smiley Logo
-                    VStack(spacing: 6) {
-                        HStack(spacing: 12) {
-                            RoundedRectangle(cornerRadius: 1.5)
-                                .fill(Color.white)
-                                .frame(width: 3.5, height: 10)
-                            RoundedRectangle(cornerRadius: 1.5)
-                                .fill(Color.white)
-                                .frame(width: 3.5, height: 10)
-                        }
-                        Text("‿")
-                            .font(.system(size: 16, weight: .bold))
+                    VStack(spacing: 3) {
+                        Text("Notchy")
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
-                            .offset(y: -4)
+
+                        Text("The Supercharged Dynamic Notch for macOS")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.6))
+                    }
+
+                    // App Version Badge
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 6, height: 6)
+                        Text("v1.0.0 (Build 1)")
+                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.9))
+                        Text("•")
+                            .foregroundStyle(.white.opacity(0.3))
+                        Text("macOS 15.0+")
+                            .font(.system(size: 9.5, weight: .regular))
+                            .foregroundStyle(.white.opacity(0.55))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Color.white.opacity(0.07), in: Capsule())
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
+                    )
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.white.opacity(0.03))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
+                )
+
+                // Software Update & Maintenance Card
+                VStack(spacing: 12) {
+                    HStack(spacing: 20) {
+                        Toggle("Auto download updates", isOn: $autoDownloadUpdates)
+                        Toggle("Auto check for updates", isOn: $autoCheckUpdates)
+                    }
+                    .font(.system(size: 11))
+
+                    Button {
+                        checkForUpdates()
+                    } label: {
+                        HStack(spacing: 6) {
+                            if isCheckingUpdates {
+                                ProgressView().controlSize(.small)
+                            } else {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.system(size: 11))
+                            }
+                            Text(isCheckingUpdates ? "Checking for Updates…" : "Check for Updates…")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                    }
+                    .controlSize(.regular)
+                    .disabled(isCheckingUpdates)
+                    .alert("Software Update", isPresented: $showingUpdateAlert) {
+                        Button("OK", role: .cancel) { }
+                    } message: {
+                        Text(updateMessage)
                     }
                 }
+                .padding(14)
+                .frame(maxWidth: .infinity)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.white.opacity(0.03))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
+                )
 
-                Text("Notchy")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                // Quick Action Buttons (Website & Email only)
+                HStack(spacing: 10) {
+                    CyberSocialButton(
+                        title: "Website",
+                        systemImage: "globe",
+                        url: "https://www.nildesai.com",
+                        accentColor: Color.cyan
+                    )
 
-                Text("v1.0.0 (Build 1)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.top, 14)
-
-            // Update Options
-            HStack(spacing: 18) {
-                Toggle("Auto download updates", isOn: $autoDownloadUpdates)
-                Toggle("Auto check for updates", isOn: $autoCheckUpdates)
-            }
-            .font(.caption)
-
-            Button {
-                isCheckingUpdates = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    isCheckingUpdates = false
-                    showingUpdateAlert = true
+                    CyberSocialButton(
+                        title: "Email Support",
+                        systemImage: "envelope.fill",
+                        url: "mailto:nildesai76@gmail.com",
+                        accentColor: Color.orange
+                    )
                 }
-            } label: {
-                HStack(spacing: 6) {
-                    if isCheckingUpdates {
-                        ProgressView().controlSize(.small)
-                    }
-                    Text(isCheckingUpdates ? "Checking…" : "Check for Updates…")
-                }
+                .padding(.top, 4)
             }
-            .controlSize(.regular)
-            .disabled(isCheckingUpdates)
-            .alert("You're Up to Date!", isPresented: $showingUpdateAlert) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text("Notchy v1.0.0 is currently the newest version available.")
-            }
-
-            Divider()
-                .padding(.horizontal, 40)
-
-            // Mission & Philosophy Statement
-            VStack(spacing: 6) {
-                Text("Notchy is designed for MacBook Notch & Dynamic Island enthusiasts")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text("Crafted with passion using pure SwiftUI & AppKit for native macOS efficiency.")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-
-            // Quick Links Capsules
-            HStack(spacing: 8) {
-                LinkButton(title: "Website", systemImage: "globe", url: "https://notchy.app")
-                LinkButton(title: "Email Us", systemImage: "envelope.fill", url: "mailto:nildesai76@gmail.com")
-                LinkButton(title: "Privacy Policy", systemImage: "hand.raised.fill", url: "https://notchy.app/privacy")
-            }
-            .padding(.bottom, 16)
+            .padding(20)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, 24)
+    }
+
+    private func checkForUpdates() {
+        isCheckingUpdates = true
+
+        guard let url = URL(string: "https://www.nildesai.com/notchy/version.json") else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                isCheckingUpdates = false
+                updateMessage = "Notchy v1.0.0 is currently the newest version available."
+                showingUpdateAlert = true
+            }
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 6
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                isCheckingUpdates = false
+
+                if let data = data,
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let remoteVersion = json["version"] as? String {
+                    let cleanVersion = remoteVersion.trimmingCharacters(in: CharacterSet(charactersIn: "vV"))
+                    if cleanVersion.compare("1.0.0", options: .numeric) == .orderedDescending {
+                        let notes = (json["releaseNotes"] as? String) ?? "A new version of Notchy is available."
+                        updateMessage = "Update Available: Notchy v\(cleanVersion)\n\n\(notes)"
+                        if let downloadUrlString = json["downloadUrl"] as? String,
+                           let downloadUrl = URL(string: downloadUrlString) {
+                            NSWorkspace.shared.open(downloadUrl)
+                        }
+                    } else {
+                        updateMessage = "You're up to date! Notchy v1.0.0 is currently the newest version."
+                    }
+                } else {
+                    updateMessage = "You're up to date! Notchy v1.0.0 is currently the newest version."
+                }
+                showingUpdateAlert = true
+            }
+        }.resume()
     }
 }
 
-private struct LinkButton: View {
+// MARK: - Cyber Cut Polygon Button
+
+private struct CyberCutRectangle: InsettableShape {
+    var cutSize: CGFloat = 6
+    var insetAmount: CGFloat = 0
+
+    func inset(by amount: CGFloat) -> CyberCutRectangle {
+        var copy = self
+        copy.insetAmount += amount
+        return copy
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let insetRect = rect.insetBy(dx: insetAmount, dy: insetAmount)
+        var path = Path()
+        path.move(to: CGPoint(x: insetRect.minX, y: insetRect.minY))
+        path.addLine(to: CGPoint(x: insetRect.maxX - cutSize, y: insetRect.minY))
+        path.addLine(to: CGPoint(x: insetRect.maxX, y: insetRect.minY + cutSize))
+        path.addLine(to: CGPoint(x: insetRect.maxX, y: insetRect.maxY))
+        path.addLine(to: CGPoint(x: insetRect.minX + cutSize, y: insetRect.maxY))
+        path.addLine(to: CGPoint(x: insetRect.minX, y: insetRect.maxY - cutSize))
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct CyberSocialButton: View {
     let title: String
     let systemImage: String
     let url: String
+    let accentColor: Color
+
+    @State private var isHovered = false
 
     var body: some View {
         Button {
@@ -1043,42 +1106,66 @@ private struct LinkButton: View {
                 NSWorkspace.shared.open(link)
             }
         } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: 6) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 9))
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(isHovered ? accentColor : .white.opacity(0.8))
+
                 Text(title)
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(isHovered ? .white : .white.opacity(0.85))
             }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5)
-            .background(Color.white.opacity(0.08), in: Capsule())
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(
+                CyberCutRectangle(cutSize: 6)
+                    .fill(isHovered ? accentColor.opacity(0.16) : Color.white.opacity(0.06))
+            )
             .overlay(
-                Capsule()
-                    .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.75)
+                CyberCutRectangle(cutSize: 6)
+                    .strokeBorder(isHovered ? accentColor.opacity(0.60) : Color.white.opacity(0.14), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
     }
 }
 
 // MARK: - Launch at login
 
 private struct LaunchAtLoginToggle: View {
-    @State private var isEnabled = SMAppService.mainApp.status == .enabled
+    @State private var isEnabled: Bool = (SMAppService.mainApp.status == .enabled)
+    @State private var statusNote: String? = nil
 
     var body: some View {
-        Toggle("Launch at login", isOn: $isEnabled)
-            .onChange(of: isEnabled) { newValue in
-                do {
-                    if newValue {
-                        try SMAppService.mainApp.register()
-                    } else {
-                        try SMAppService.mainApp.unregister()
+        VStack(alignment: .leading, spacing: 2) {
+            Toggle("Launch at login", isOn: Binding(
+                get: { isEnabled },
+                set: { newValue in
+                    do {
+                        if newValue {
+                            try SMAppService.mainApp.register()
+                        } else {
+                            try SMAppService.mainApp.unregister()
+                        }
+                        isEnabled = (SMAppService.mainApp.status == .enabled)
+                        statusNote = nil
+                    } catch {
+                        statusNote = "System Settings: \(error.localizedDescription)"
+                        isEnabled = (SMAppService.mainApp.status == .enabled)
                     }
-                } catch {
-                    isEnabled = SMAppService.mainApp.status == .enabled
                 }
+            ))
+
+            if let note = statusNote {
+                Text(note)
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
             }
+        }
+        .onAppear {
+            isEnabled = (SMAppService.mainApp.status == .enabled)
+        }
     }
 }
 

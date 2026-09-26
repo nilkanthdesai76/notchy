@@ -10,21 +10,22 @@ import Combine
 
 struct MediaView: View {
     @EnvironmentObject private var media: MediaManager
+    @Environment(\.cardSlotCount) private var cardSlotCount
     @State private var isHoveringProgress = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: cardSlotCount == 1 ? 9 : 8) {
             // Top Row: Artwork + Title + Artist
-            HStack(spacing: 10) {
+            HStack(spacing: cardSlotCount == 1 ? 12 : 10) {
                 artwork
                 VStack(alignment: .leading, spacing: 2) {
                     if media.hasSession {
                         Text(media.state.title)
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(size: cardSlotCount == 1 ? 13 : 12, weight: .semibold))
                             .foregroundStyle(.white)
                             .lineLimit(1)
                         Text(media.state.artist)
-                            .font(.system(size: 10))
+                            .font(.system(size: cardSlotCount == 1 ? 11 : 10))
                             .foregroundStyle(.white.opacity(0.6))
                             .lineLimit(1)
                     } else {
@@ -39,7 +40,7 @@ struct MediaView: View {
                 }
                 Spacer(minLength: 0)
                 if media.state.isPlaying {
-                    MediaVisualizerView(isPlaying: true, barCount: 4, color: .green.opacity(0.9))
+                    MediaVisualizerView(isPlaying: true, barCount: cardSlotCount == 1 ? 6 : 4, color: .green.opacity(0.9))
                 }
             }
 
@@ -50,17 +51,17 @@ struct MediaView: View {
                 // Grouped Liquid Glass Transport Capsule
                 HStack {
                     Spacer(minLength: 0)
-                    HStack(spacing: 16) {
-                        NotchIconButton(systemName: "backward.fill", fontSize: 11, action: media.previousTrack)
+                    HStack(spacing: cardSlotCount == 1 ? 22 : 16) {
+                        NotchIconButton(systemName: "backward.fill", fontSize: cardSlotCount == 1 ? 12 : 11, action: media.previousTrack)
                         NotchIconButton(
                             systemName: media.state.isPlaying ? "pause.fill" : "play.fill",
-                            fontSize: 13,
+                            fontSize: cardSlotCount == 1 ? 15 : 13,
                             action: media.togglePlayPause
                         )
-                        NotchIconButton(systemName: "forward.fill", fontSize: 11, action: media.nextTrack)
+                        NotchIconButton(systemName: "forward.fill", fontSize: cardSlotCount == 1 ? 12 : 11, action: media.nextTrack)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 3.5)
+                    .padding(.horizontal, cardSlotCount == 1 ? 16 : 12)
+                    .padding(.vertical, cardSlotCount == 1 ? 4.5 : 3.5)
                     .liquidGlassCapsule()
                     Spacer(minLength: 0)
                 }
@@ -78,7 +79,7 @@ struct MediaView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .liquidGlassPod(cornerRadius: 16)
+        .liquidGlassPod()
     }
 
     private var artwork: some View {

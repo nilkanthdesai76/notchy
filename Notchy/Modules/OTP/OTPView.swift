@@ -2,8 +2,8 @@
 //  OTPView.swift
 //  Notchy
 //
-//  Dedicated 2FA TOTP Authenticator module with live countdown rings
-//  and one-click code copying.
+//  Dedicated 2FA TOTP Authenticator module with adaptive single/multi-card
+//  layout support, live countdown rings, and one-click code copying.
 //
 
 import Combine
@@ -11,14 +11,11 @@ import SwiftUI
 
 struct OTPView: View {
     @ObservedObject var otp = OTPManager.shared
+    @Environment(\.cardSlotCount) private var cardSlotCount
     @State private var copiedId: UUID?
-    @State private var showingAddSheet = false
-    @State private var newIssuer = ""
-    @State private var newLabel = ""
-    @State private var newSecret = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: cardSlotCount == 1 ? 9 : 8) {
             // Header Row: Title + Countdown badge
             HStack {
                 HStack(spacing: 5) {
@@ -26,8 +23,14 @@ struct OTPView: View {
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(.purple)
                     Text("2FA Authenticator")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: cardSlotCount == 1 ? 12 : 11, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.9))
+                }
+
+                if cardSlotCount == 1 {
+                    Text("• \(otp.accounts.count) Accounts Configured")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.white.opacity(0.45))
                 }
 
                 Spacer()
@@ -66,6 +69,7 @@ struct OTPView: View {
                     Button("Add Sample Keys") {
                         otp.addAccount(issuer: "GitHub", label: "dev@github.com", secret: "JBSWY3DPEHPK3PXP")
                         otp.addAccount(issuer: "Google", label: "work@google.com", secret: "HXDMVJECJJWSRB3H")
+                        otp.addAccount(issuer: "AWS", label: "infra@prod.aws", secret: "HXDMVJECJJWSRB3H")
                     }
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(.cyan)
@@ -73,7 +77,25 @@ struct OTPView: View {
                     Spacer()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if cardSlotCount == 1 {
+                // Wide 2-Column Grid
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 6) {
+                    ForEach(otp.accounts.prefix(4)) { account in
+                        let code = otp.currentCodes[account.id] ?? "------"
+                        OTPAccountRow(
+                            account: account,
+                            code: code,
+                            progress: otp.progress,
+                            remainingSeconds: otp.remainingSeconds,
+                            isCopied: copiedId == account.id
+                        ) {
+                            copyCode(code, for: account.id)
+                        }
+                    }
+                }
+                .frame(maxHeight: .infinity, alignment: .top)
             } else {
+                // Compact Vertical List
                 VStack(spacing: 5) {
                     ForEach(otp.accounts.prefix(3)) { account in
                         let code = otp.currentCodes[account.id] ?? "------"
@@ -84,14 +106,7 @@ struct OTPView: View {
                             remainingSeconds: otp.remainingSeconds,
                             isCopied: copiedId == account.id
                         ) {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(code, forType: .string)
-                            copiedId = account.id
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                                if copiedId == account.id {
-                                    copiedId = nil
-                                }
-                            }
+                            copyCode(code, for: account.id)
                         }
                     }
                 }
@@ -100,7 +115,19 @@ struct OTPView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .liquidGlassPod(cornerRadius: 16)
+        .liquidGlassPod()
+    }
+
+    private func copyCode(_ code: String, for id: UUID) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(code, forType: .string)
+        copiedId = id
+        NSSound(named: "Pop")?.play()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            if copiedId == id {
+                copiedId = nil
+            }
+        }
     }
 }
 

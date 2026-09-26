@@ -12,14 +12,15 @@ import UniformTypeIdentifiers
 struct ShelfView: View {
     @ObservedObject var shelf = ShelfManager.shared
     @Environment(\.moduleCornerRadii) private var radii
+    @Environment(\.cardSlotCount) private var cardSlotCount
     @State private var isTargeted = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: cardSlotCount == 1 ? 9 : 8) {
             // Header Row: Title + AirDrop All + Clear
             HStack(spacing: 8) {
                 Label("File Shelf", systemImage: "tray.and.arrow.down.fill")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: cardSlotCount == 1 ? 12 : 11, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.85))
 
                 if !shelf.items.isEmpty {
@@ -31,6 +32,12 @@ struct ShelfView: View {
                         .background(Color.white.opacity(0.12), in: Capsule())
                 }
 
+                if cardSlotCount == 1 {
+                    Text("• Drag & Drop Staging Ground")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.white.opacity(0.45))
+                }
+
                 Spacer(minLength: 0)
 
                 if !shelf.items.isEmpty {
@@ -40,12 +47,12 @@ struct ShelfView: View {
                         HStack(spacing: 3) {
                             Image(systemName: "airdrop")
                                 .font(.system(size: 10, weight: .bold))
-                            Text("AirDrop")
+                            Text("AirDrop All")
                                 .font(.system(size: 9, weight: .semibold))
                         }
                         .foregroundStyle(.blue.opacity(0.9))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3.5)
                         .background(Color.blue.opacity(0.15), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
                     }
                     .buttonStyle(.plain)
@@ -53,8 +60,8 @@ struct ShelfView: View {
                     Button("Clear") {
                         shelf.clear()
                     }
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .font(.system(size: 9.5, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.45))
                     .buttonStyle(.plain)
                 }
             }
@@ -62,6 +69,15 @@ struct ShelfView: View {
             // Shelf Content / Drop Target
             if shelf.items.isEmpty {
                 dropZonePlaceholder
+            } else if cardSlotCount == 1 {
+                ScrollView(.vertical, showsIndicators: false) {
+                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 5) {
+                        ForEach(shelf.items) { item in
+                            ShelfItemCard(item: item)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
                     LazyVStack(spacing: 5) {
@@ -90,13 +106,18 @@ struct ShelfView: View {
         VStack(spacing: 6) {
             Spacer()
             Image(systemName: isTargeted ? "arrow.down.circle.fill" : "tray.fill")
-                .font(.system(size: 24))
+                .font(.system(size: cardSlotCount == 1 ? 28 : 24))
                 .foregroundStyle(isTargeted ? Color.blue : Color.white.opacity(0.2))
                 .scaleEffect(isTargeted ? 1.15 : 1.0)
                 .animation(.spring(response: 0.3), value: isTargeted)
             Text(isTargeted ? "Drop Files Here" : "Drag files here to stage & AirDrop")
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: cardSlotCount == 1 ? 11 : 10, weight: .medium))
                 .foregroundStyle(.white.opacity(isTargeted ? 0.9 : 0.4))
+            if cardSlotCount == 1 {
+                Text("Hover items over the notch anytime to drop from any app")
+                    .font(.system(size: 8.5))
+                    .foregroundStyle(.white.opacity(0.3))
+            }
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

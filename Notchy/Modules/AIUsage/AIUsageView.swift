@@ -12,14 +12,26 @@ import Combine
 
 struct AIUsageView: View {
     @ObservedObject var usage = AIUsageManager.shared
+    @Environment(\.cardSlotCount) private var cardSlotCount
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Header Row: Title + Refresh Button + Settings link
             HStack {
-                Label("AI Token Usage", systemImage: "sparkles")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.85))
+                HStack(spacing: 5) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.cyan)
+                    Text("AI Token Usage")
+                        .font(.system(size: cardSlotCount == 1 ? 12 : 11, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+
+                if cardSlotCount == 1 {
+                    Text("• Local Token Quotas & Live API Gauges")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.white.opacity(0.45))
+                }
 
                 Spacer()
 
@@ -44,34 +56,44 @@ struct AIUsageView: View {
 
             // Cards List
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 7) {
-                    ForEach(usage.providers) { provider in
-                        AIProviderUsageCard(provider: provider)
-                    }
-
-                    if usage.providers.isEmpty {
-                        VStack(spacing: 6) {
-                            Image(systemName: "cpu")
-                                .font(.system(size: 16))
-                                .foregroundStyle(.white.opacity(0.3))
-                            Text("No AI Tools Connected")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.6))
-                            Text("Configure API keys or launch Antigravity to view real token analytics.")
-                                .font(.system(size: 8))
-                                .foregroundStyle(.white.opacity(0.4))
-                                .multilineTextAlignment(.center)
+                if cardSlotCount == 1 {
+                    // 2-Column Grid
+                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                        ForEach(usage.providers) { provider in
+                            AIProviderUsageCard(provider: provider)
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 24)
                     }
+                } else {
+                    // Vertical Stack
+                    VStack(spacing: 7) {
+                        ForEach(usage.providers) { provider in
+                            AIProviderUsageCard(provider: provider)
+                        }
+                    }
+                }
+
+                if usage.providers.isEmpty {
+                    VStack(spacing: 6) {
+                        Image(systemName: "cpu")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.white.opacity(0.3))
+                        Text("No AI Tools Connected")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.6))
+                        Text("Configure API keys or launch Antigravity to view real token analytics.")
+                            .font(.system(size: 8))
+                            .foregroundStyle(.white.opacity(0.4))
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .padding(10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .liquidGlassPod(cornerRadius: 16)
+        .liquidGlassPod()
     }
 }
 

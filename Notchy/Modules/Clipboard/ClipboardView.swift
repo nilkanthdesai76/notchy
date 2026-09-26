@@ -10,6 +10,7 @@ import Combine
 
 struct ClipboardView: View {
     @EnvironmentObject private var clipboard: ClipboardManager
+    @Environment(\.cardSlotCount) private var cardSlotCount
     @State private var searchText: String = ""
     @State private var copiedId: UUID?
 
@@ -29,19 +30,25 @@ struct ClipboardView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: cardSlotCount == 1 ? 9 : 8) {
             // Header Row: Title + Search Field + Clear Button
             HStack(spacing: 8) {
                 Label("Clipboard", systemImage: "doc.on.clipboard")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: cardSlotCount == 1 ? 12 : 11, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.85))
+
+                if cardSlotCount == 1 {
+                    Text("• \(clipboard.items.count) Items")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.white.opacity(0.45))
+                }
 
                 // Search Bar
                 HStack(spacing: 4) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 9))
                         .foregroundStyle(.white.opacity(0.4))
-                    TextField("Search...", text: $searchText)
+                    TextField("Search clipboard...", text: $searchText)
                         .textFieldStyle(.plain)
                         .font(.system(size: 10))
                         .foregroundStyle(.white)
@@ -57,17 +64,18 @@ struct ClipboardView: View {
                     }
                 }
                 .padding(.horizontal, 6)
-                .padding(.vertical, 3)
+                .padding(.vertical, 3.5)
                 .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .frame(maxWidth: cardSlotCount == 1 ? 220 : .infinity)
 
                 Spacer(minLength: 0)
 
                 if !clipboard.items.isEmpty {
-                    Button("Clear") {
+                    Button("Clear All") {
                         clipboard.clear()
                     }
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .font(.system(size: 9.5, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.45))
                     .buttonStyle(.plain)
                 }
             }
@@ -83,6 +91,24 @@ struct ClipboardView: View {
                         .font(.system(size: 10))
                         .foregroundStyle(.white.opacity(0.3))
                     Spacer()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if cardSlotCount == 1 {
+                // Wide 2-Column Grid on Solo Page
+                ScrollView(.vertical, showsIndicators: false) {
+                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 5) {
+                        ForEach(filteredItems) { item in
+                            ClipboardItemRow(item: item, isCopied: copiedId == item.id) {
+                                clipboard.copy(item)
+                                copiedId = item.id
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                                    if copiedId == item.id {
+                                        copiedId = nil
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -106,7 +132,7 @@ struct ClipboardView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .liquidGlassPod(cornerRadius: 16)
+        .liquidGlassPod()
     }
 }
 
