@@ -118,13 +118,19 @@ struct StatsAndToolsView: View {
                     tools.pickScreenColor()
                 } label: {
                     HStack(spacing: 5) {
-                        Image(systemName: "eyedropper.halffull")
-                            .font(.system(size: 10))
                         if tools.pickedColorFeedback, let hex = tools.lastPickedHex {
+                            if let nsCol = tools.lastPickedColor {
+                                Circle()
+                                    .fill(Color(nsColor: nsCol))
+                                    .frame(width: 8, height: 8)
+                                    .overlay(Circle().strokeBorder(Color.white.opacity(0.3), lineWidth: 0.5))
+                            }
                             Text(hex)
-                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .font(.system(size: 8.5, weight: .bold, design: .monospaced))
                                 .foregroundStyle(.green)
                         } else {
+                            Image(systemName: "eyedropper.halffull")
+                                .font(.system(size: 10))
                             Text("Eyedropper")
                                 .font(.system(size: 9, weight: .semibold))
                                 .foregroundStyle(.white.opacity(0.8))
@@ -137,8 +143,13 @@ struct StatsAndToolsView: View {
                         tools.pickedColorFeedback ? Color.green.opacity(0.2) : Color.white.opacity(0.08),
                         in: RoundedRectangle(cornerRadius: 8, style: .continuous)
                     )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .strokeBorder(tools.pickedColorFeedback ? Color.green.opacity(0.5) : Color.clear, lineWidth: 1)
+                    )
                 }
                 .buttonStyle(.plain)
+                .help("Sample any color from your screen and copy HEX to clipboard")
             }
         }
         .padding(10)

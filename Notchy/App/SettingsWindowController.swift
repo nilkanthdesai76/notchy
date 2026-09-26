@@ -29,6 +29,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             )
             window.title = "Notchy Settings"
             window.titlebarAppearsTransparent = true
+            window.appearance = NSAppearance(named: .darkAqua)
+            window.backgroundColor = NSColor(calibratedWhite: 0.08, alpha: 1.0)
             window.minSize = NSSize(width: 680, height: 560)
             window.center()
             window.contentView = NSHostingView(rootView: SettingsView())

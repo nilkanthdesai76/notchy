@@ -225,6 +225,7 @@ private struct SettingsGeneralTab: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
         .padding(14)
     }
 }
@@ -336,6 +337,7 @@ private struct SettingsLiveActivitiesTab: View {
                     }
                 }
                 .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
                 .padding(.horizontal, 14)
             } else {
                 Form {
@@ -361,6 +363,7 @@ private struct SettingsLiveActivitiesTab: View {
                     }
                 }
                 .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
                 .padding(.horizontal, 14)
             }
         }
@@ -553,6 +556,7 @@ private struct SettingsAppearanceTab: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
         .padding(14)
     }
 }
@@ -602,6 +606,7 @@ private struct SettingsShelfTab: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
         .padding(14)
     }
 }
@@ -726,6 +731,7 @@ private struct SettingsAITab: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
         .padding(14)
     }
 }
@@ -823,6 +829,7 @@ private struct SettingsLicenseTab: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
         .padding(14)
     }
 
