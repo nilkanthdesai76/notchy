@@ -27,9 +27,9 @@ struct CameraView: View {
                 if camera.isRunning, let layer = camera.previewLayer {
                     CameraPreview(layer: layer)
                         .scaleEffect(x: -1, y: 1) // Mirror reflection flip
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .strokeBorder(Color.green.opacity(0.8), lineWidth: 1.5)
                         )
                         .overlay(alignment: .topTrailing) {
@@ -57,22 +57,6 @@ struct CameraView: View {
                             }
                         }
                 } else {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(isHovered ? 0.12 : 0.08),
-                                    Color.white.opacity(isHovered ? 0.06 : 0.03)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .strokeBorder(Color.white.opacity(isHovered ? 0.25 : 0.08), lineWidth: 1)
-                        )
-
                     VStack(spacing: 6) {
                         ZStack {
                             Circle()
@@ -87,10 +71,12 @@ struct CameraView: View {
                             .font(.system(size: 9, weight: .medium))
                             .foregroundStyle(.white.opacity(isHovered ? 0.9 : 0.6))
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .liquidGlassPod(cornerRadius: 16)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }

@@ -10,7 +10,7 @@ import Combine
 
 struct MediaView: View {
     @EnvironmentObject private var media: MediaManager
-    @State private var isHoveringVolume = false
+    @State private var isHoveringProgress = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -44,22 +44,26 @@ struct MediaView: View {
             }
 
             if media.hasSession {
-                // Scrubber Bar
+                // Interactive Liquid Glass Scrubber
                 progressBar
 
-                // Controls Row
-                HStack(spacing: 8) {
-                    NotchIconButton(systemName: "backward.fill", fontSize: 11, action: media.previousTrack)
-                    Spacer()
-                    NotchIconButton(
-                        systemName: media.state.isPlaying ? "pause.fill" : "play.fill",
-                        fontSize: 14,
-                        action: media.togglePlayPause
-                    )
-                    Spacer()
-                    NotchIconButton(systemName: "forward.fill", fontSize: 11, action: media.nextTrack)
+                // Grouped Liquid Glass Transport Capsule
+                HStack {
+                    Spacer(minLength: 0)
+                    HStack(spacing: 16) {
+                        NotchIconButton(systemName: "backward.fill", fontSize: 11, action: media.previousTrack)
+                        NotchIconButton(
+                            systemName: media.state.isPlaying ? "pause.fill" : "play.fill",
+                            fontSize: 13,
+                            action: media.togglePlayPause
+                        )
+                        NotchIconButton(systemName: "forward.fill", fontSize: 11, action: media.nextTrack)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 3.5)
+                    .liquidGlassCapsule()
+                    Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 4)
             } else {
                 Spacer()
                 HStack {
@@ -74,18 +78,7 @@ struct MediaView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(
-            LinearGradient(
-                colors: [Color.white.opacity(0.08), Color.white.opacity(0.03)],
-                startPoint: .top,
-                endPoint: .bottom
-            ),
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
-        )
+        .liquidGlassPod(cornerRadius: 16)
     }
 
     private var artwork: some View {
@@ -109,6 +102,10 @@ struct MediaView: View {
         }
         .frame(width: 44, height: 44)
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.75)
+        )
         .shadow(color: .black.opacity(0.4), radius: 4, y: 2)
     }
 
@@ -123,25 +120,53 @@ struct MediaView: View {
                 return min(max(elapsed / media.state.duration, 0), 1)
             }()
 
-            VStack(spacing: 2) {
+            VStack(spacing: 3) {
                 GeometryReader { geometry in
+                    let trackWidth = geometry.size.width
+                    let activeWidth = max(0, min(trackWidth * progress, trackWidth))
+
                     ZStack(alignment: .leading) {
-                        Capsule().fill(.white.opacity(0.12))
+                        // Recessed glass track
                         Capsule()
-                            .fill(LinearGradient(colors: [.white.opacity(0.9), .white.opacity(0.6)], startPoint: .leading, endPoint: .trailing))
-                            .frame(width: max(0, geometry.size.width * progress))
+                            .fill(Color.white.opacity(0.12))
+                            .frame(height: isHoveringProgress ? 5 : 3.5)
+
+                        // Luminous progress fill
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.white.opacity(0.95), Color.white.opacity(0.70)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(width: activeWidth, height: isHoveringProgress ? 5 : 3.5)
+
+                        // Interactive Liquid Glass Knob
+                        if isHoveringProgress {
+                            Circle()
+                                .fill(Color.white)
+                                .frame(width: 9, height: 9)
+                                .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
+                                .offset(x: max(0, min(activeWidth - 4.5, trackWidth - 9)))
+                                .transition(.scale.combined(with: .opacity))
+                        }
                     }
+                    .frame(height: 10)
+                    .contentShape(Rectangle())
+                    .onHover { isHoveringProgress = $0 }
                 }
-                .frame(height: 3)
+                .frame(height: 10)
+                .animation(.spring(response: 0.25, dampingFraction: 0.75), value: isHoveringProgress)
 
                 HStack {
                     Text(formatTime(media.state.elapsed))
                         .font(.system(size: 8, weight: .regular, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.4))
+                        .foregroundStyle(.white.opacity(0.45))
                     Spacer()
                     Text(formatTime(media.state.duration))
                         .font(.system(size: 8, weight: .regular, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.4))
+                        .foregroundStyle(.white.opacity(0.45))
                 }
             }
         }

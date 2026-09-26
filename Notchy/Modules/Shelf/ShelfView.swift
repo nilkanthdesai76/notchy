@@ -74,17 +74,10 @@ struct ShelfView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(
-            LinearGradient(
-                colors: [Color.white.opacity(0.08), Color.white.opacity(0.03)],
-                startPoint: .top,
-                endPoint: .bottom
-            ),
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-        )
+        .liquidGlassPod(cornerRadius: 16)
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(isTargeted ? Color.blue : Color.white.opacity(0.08), lineWidth: isTargeted ? 1.5 : 1)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(isTargeted ? Color.blue : Color.clear, lineWidth: 1.5)
         )
         .onDrop(of: [.fileURL], isTargeted: $isTargeted) { providers in
             loadDroppedFiles(from: providers)

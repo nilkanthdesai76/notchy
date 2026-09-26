@@ -307,24 +307,26 @@ private struct NotchExpandedContent: View {
 
                 Spacer()
 
-                // Actions: Customize Layout, Settings, Quit
-                HStack(spacing: 5) {
-                    NotchIconButton(systemName: "square.grid.3x1.below.line.grid.1x2", fontSize: 10.5) {
+                // Actions: Grouped Liquid Glass Capsule for Settings, Layout, Quit
+                HStack(spacing: 4) {
+                    NotchIconButton(systemName: "square.grid.3x1.below.line.grid.1x2", fontSize: 10) {
                         SettingsWindowController.shared.show()
                     }
                     .help("Customize Pages & Modules")
 
-                    NotchIconButton(systemName: "gearshape.fill", fontSize: 10.5) {
+                    NotchIconButton(systemName: "gearshape.fill", fontSize: 10) {
                         SettingsWindowController.shared.show()
                     }
                     .help("Settings")
 
-                    NotchIconButton(systemName: "power", fontSize: 10.5) {
+                    NotchIconButton(systemName: "power", fontSize: 10) {
                         NSApplication.shared.terminate(nil)
                     }
                     .help("Quit Notchy")
                 }
-                .frame(width: 100, alignment: .trailing)
+                .padding(2.5)
+                .liquidGlassCapsule()
+                .frame(width: 105, alignment: .trailing)
             }
 
             // Dynamic Smooth Horizontal Carousel
@@ -391,30 +393,46 @@ private struct NotchExpandedContent: View {
                 switcherTab(title: page.title, icon: icon, index: index)
             }
         }
-        .padding(2.5)
-        .background(Color.white.opacity(0.08), in: Capsule())
+        .padding(3)
+        .liquidGlassCapsule()
     }
 
     private func switcherTab(title: String, icon: String, index: Int) -> some View {
         let isSelected = viewModel.selectedPage == index
         return Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
                 viewModel.selectPage(index)
             }
         } label: {
-            HStack(spacing: 4) {
+            HStack(spacing: 4.5) {
                 Image(systemName: icon)
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.system(size: 9.5, weight: .semibold))
                 Text(title)
-                    .font(.system(size: 9, weight: isSelected ? .bold : .medium))
+                    .font(.system(size: 9.5, weight: isSelected ? .bold : .medium))
             }
-            .foregroundStyle(isSelected ? .white : .white.opacity(0.5))
-            .padding(.horizontal, 9)
-            .padding(.vertical, 4)
+            .foregroundStyle(isSelected ? .white : .white.opacity(0.55))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4.5)
             .background {
                 if isSelected {
                     Capsule()
-                        .fill(Color.white.opacity(0.2))
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.24), Color.white.opacity(0.14)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .overlay(
+                            Capsule().strokeBorder(
+                                LinearGradient(
+                                    colors: [Color.white.opacity(0.40), Color.white.opacity(0.08)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 0.75
+                            )
+                        )
                         .matchedGeometryEffect(id: "activeTab", in: tabAnimation)
                 }
             }
@@ -441,11 +459,7 @@ private struct NotchExpandedContent: View {
                 .buttonStyle(.plain)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
-            )
+            .liquidGlassPod(cornerRadius: 16)
         } else {
             let gap: CGFloat = 8
             let available = width - CGFloat(max(0, page.modules.count - 1)) * gap

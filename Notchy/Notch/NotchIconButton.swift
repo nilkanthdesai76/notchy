@@ -18,9 +18,30 @@ struct NotchIconButton: View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: fontSize, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 28, height: 28)
-                .background(.white.opacity(hovering ? 0.16 : 0.07), in: .circle)
+                .foregroundStyle(.white.opacity(hovering ? 1.0 : 0.85))
+                .frame(width: 26, height: 26)
+                .background {
+                    ZStack {
+                        Circle()
+                            .fill(.ultraThinMaterial.opacity(0.85))
+                        Circle()
+                            .fill(Color.white.opacity(hovering ? 0.18 : 0.06))
+                    }
+                }
+                .overlay {
+                    Circle()
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(hovering ? 0.35 : 0.16),
+                                    Color.white.opacity(0.04)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.75
+                        )
+                }
                 .contentShape(.circle)
         }
         .buttonStyle(NotchPressButtonStyle())
