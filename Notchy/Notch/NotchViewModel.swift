@@ -39,16 +39,14 @@ final class NotchViewModel: ObservableObject {
         self.openWidth = openWidth
         self.contentHeight = 220
         self.hasNotch = geometry.hasNotch
-        let menuBarHeight = max(screen.frame.maxY - screen.visibleFrame.maxY, 24)
-        self.topInset = geometry.hasNotch ? geometry.size.height : menuBarHeight
+        self.topInset = geometry.hasNotch ? geometry.size.height : 0
 
         if geometry.hasNotch {
             neckSize = geometry.size
             neckOrigin = CGPoint(x: openWidth / 2 - geometry.size.width / 2, y: 0)
         } else {
             // Sleek dynamic island pill at top center for Macs without a notch
-            let pillHeight = min(menuBarHeight, 28)
-            neckSize = CGSize(width: 180, height: pillHeight)
+            neckSize = CGSize(width: 180, height: 28)
             neckOrigin = CGPoint(x: openWidth / 2 - 90, y: 0)
         }
     }

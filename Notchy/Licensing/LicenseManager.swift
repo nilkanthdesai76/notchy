@@ -252,35 +252,36 @@ final class LicenseManager: ObservableObject {
         return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
     }
 
-    // MARK: - Keychain
+    // MARK: - License Storage (Application Support)
+
+    private var storageURL: URL {
+        let directory = FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Notchy", isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory.appendingPathComponent("license.json")
+    }
 
     private func saveLicenseCache(_ cache: LicenseCache) {
         guard let data = try? JSONEncoder().encode(cache) else { return }
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: "license_cache",
-            kSecValueData as String: data
-        ]
-        SecItemDelete(query as CFDictionary)
-        SecItemAdd(query as CFDictionary, nil)
+        try? data.write(to: storageURL, options: .atomic)
+        cleanupLegacyKeychain()
     }
 
     private func loadLicenseCache() -> LicenseCache? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: "license_cache",
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var result: AnyObject?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
-              let data = result as? Data else { return nil }
-        return try? JSONDecoder().decode(LicenseCache.self, from: data)
+        if let data = try? Data(contentsOf: storageURL),
+           let cache = try? JSONDecoder().decode(LicenseCache.self, from: data) {
+            return cache
+        }
+        return nil
     }
 
     private func deleteLicenseCache() {
+        try? FileManager.default.removeItem(at: storageURL)
+        cleanupLegacyKeychain()
+    }
+
+    private func cleanupLegacyKeychain() {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
