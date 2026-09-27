@@ -14,13 +14,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let clipboard = ClipboardManager()
     let camera = CameraManager()
 
-    private var notchController: NotchWindowController?
+    private var notchControllers: [NotchWindowController] = []
     private var rebuildTask: Task<Void, Never>?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         terminateOtherInstances()
-        rebuildForCurrentScreen()
+        rebuildForCurrentScreens()
 
         NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
@@ -34,7 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.rebuildTask = Task { @MainActor [weak self] in
                     try? await Task.sleep(nanoseconds: 500_000_000)
                     guard !Task.isCancelled, let self else { return }
-                    self.rebuildForCurrentScreen()
+                    self.rebuildForCurrentScreens()
                 }
             }
         }
@@ -46,6 +46,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         // Reap the mediaremote-adapter perl child; SIGTERM quits reach this.
+        for controller in notchControllers {
+            controller.invalidate()
+        }
+        notchControllers.removeAll()
         media.shutdown()
         camera.stop()
     }
@@ -74,19 +78,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func rebuildForCurrentScreen() {
-        notchController = NotchWindowController(
-            screen: targetScreen(),
-            media: media,
-            clipboard: clipboard,
-            camera: camera
-        )
-    }
+    private func rebuildForCurrentScreens() {
+        for controller in notchControllers {
+            controller.invalidate()
+        }
+        notchControllers.removeAll()
 
-    /// Prefer the built-in notched screen; fall back to the main screen.
-    private func targetScreen() -> NSScreen {
-        NSScreen.screens.first { $0.notchGeometry.hasNotch }
-            ?? NSScreen.main
-            ?? NSScreen.screens[0]
+        for screen in NSScreen.screens {
+            let controller = NotchWindowController(
+                screen: screen,
+                media: media,
+                clipboard: clipboard,
+                camera: camera
+            )
+            notchControllers.append(controller)
+        }
     }
 }

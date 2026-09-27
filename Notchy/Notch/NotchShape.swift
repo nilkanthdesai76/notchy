@@ -69,32 +69,52 @@ struct NotchSilhouetteShape: Shape {
             path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
             path.closeSubpath()
         } else {
-            // Standard rounded pill for non-notch or stealth mode
-            let br = min(bottomRadius, rect.height / 2, rect.width / 2)
+            // Standard rounded pill for non-notch compact closed pill,
+            // or flush top edge with rounded bottom corners when open from top bezel.
+            let br = min(bottomRadius, rect.height, rect.width / 2)
             let tr = min(topRadius, rect.height / 2, rect.width / 2)
 
-            path.move(to: CGPoint(x: rect.minX + tr, y: rect.minY))
-            path.addLine(to: CGPoint(x: rect.maxX - tr, y: rect.minY))
-            path.addQuadCurve(
-                to: CGPoint(x: rect.maxX, y: rect.minY + tr),
-                control: CGPoint(x: rect.maxX, y: rect.minY)
-            )
-            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - br))
-            path.addQuadCurve(
-                to: CGPoint(x: rect.maxX - br, y: rect.maxY),
-                control: CGPoint(x: rect.maxX, y: rect.maxY)
-            )
-            path.addLine(to: CGPoint(x: rect.minX + br, y: rect.maxY))
-            path.addQuadCurve(
-                to: CGPoint(x: rect.minX, y: rect.maxY - br),
-                control: CGPoint(x: rect.minX, y: rect.maxY)
-            )
-            path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + tr))
-            path.addQuadCurve(
-                to: CGPoint(x: rect.minX + tr, y: rect.minY),
-                control: CGPoint(x: rect.minX, y: rect.minY)
-            )
-            path.closeSubpath()
+            if tr > 0.5 {
+                // Closed floating/menu-bar pill
+                path.move(to: CGPoint(x: rect.minX + tr, y: rect.minY))
+                path.addLine(to: CGPoint(x: rect.maxX - tr, y: rect.minY))
+                path.addQuadCurve(
+                    to: CGPoint(x: rect.maxX, y: rect.minY + tr),
+                    control: CGPoint(x: rect.maxX, y: rect.minY)
+                )
+                path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - br))
+                path.addQuadCurve(
+                    to: CGPoint(x: rect.maxX - br, y: rect.maxY),
+                    control: CGPoint(x: rect.maxX, y: rect.maxY)
+                )
+                path.addLine(to: CGPoint(x: rect.minX + br, y: rect.maxY))
+                path.addQuadCurve(
+                    to: CGPoint(x: rect.minX, y: rect.maxY - br),
+                    control: CGPoint(x: rect.minX, y: rect.maxY)
+                )
+                path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + tr))
+                path.addQuadCurve(
+                    to: CGPoint(x: rect.minX + tr, y: rect.minY),
+                    control: CGPoint(x: rect.minX, y: rect.minY)
+                )
+                path.closeSubpath()
+            } else {
+                // Open panel: top edge is flush with the top screen bezel, bottom corners are squircles
+                path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+                path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+                path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - br))
+                path.addQuadCurve(
+                    to: CGPoint(x: rect.maxX - br, y: rect.maxY),
+                    control: CGPoint(x: rect.maxX, y: rect.maxY)
+                )
+                path.addLine(to: CGPoint(x: rect.minX + br, y: rect.maxY))
+                path.addQuadCurve(
+                    to: CGPoint(x: rect.minX, y: rect.maxY - br),
+                    control: CGPoint(x: rect.minX, y: rect.maxY)
+                )
+                path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+                path.closeSubpath()
+            }
         }
 
         return path

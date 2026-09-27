@@ -94,9 +94,8 @@ struct NotchView: View {
     }
 
     var body: some View {
-        let neckHeight: CGFloat = viewModel.hasNotch ? viewModel.topInset : 32
-        let topPad: CGFloat = viewModel.hasNotch ? 0 : 6
-        let silhouetteHeight = topPad + neckHeight + viewModel.contentHeight * viewModel.reveal
+        let neckHeight: CGFloat = viewModel.topInset
+        let silhouetteHeight = neckHeight + viewModel.contentHeight * viewModel.reveal
 
         // Dynamic asymmetric ear widths tailored to content
         let leadingEarWidth: CGFloat = {
@@ -146,7 +145,8 @@ struct NotchView: View {
 
         // Flared ears connecting to top bezel on notch Macs; continuous squircles on bottom
         // When closed: 14pt bottom radius matching physical notch curvature. When open: 38pt sweeping squircle.
-        let topRadius: CGFloat = viewModel.isOpen ? 12 : (viewModel.hasNotch ? 8 : 14)
+        // On non-notch Macs: 0pt top radius (flush with top screen bezel) when open, 14pt pill when closed.
+        let topRadius: CGFloat = viewModel.hasNotch ? (viewModel.isOpen ? 12 : 8) : (viewModel.isOpen ? 0 : 14)
         let bottomRadius: CGFloat = viewModel.isOpen ? 38 : (viewModel.hasNotch ? 14 : 14)
         let shape = NotchSilhouetteShape(
             topRadius: topRadius,
@@ -157,7 +157,7 @@ struct NotchView: View {
         ZStack(alignment: .top) {
             // Main notch silhouette background + expanded content
             VStack(spacing: 0) {
-                Spacer().frame(height: topPad + neckHeight)
+                Spacer().frame(height: neckHeight)
                 if viewModel.reveal > 0.02 {
                     NotchExpandedContent(viewModel: viewModel)
                         .frame(width: viewModel.openWidth, height: viewModel.contentHeight)
@@ -225,7 +225,7 @@ struct NotchView: View {
                     neckHeight: neckHeight
                 )
                 .frame(width: closedWidth, height: neckHeight)
-                .position(x: closedCenterX, y: topPad + neckHeight / 2)
+                .position(x: closedCenterX, y: neckHeight / 2)
                 .opacity(viewModel.reveal > 0.05 ? 0 : 1)
                 .transition(.opacity)
             }

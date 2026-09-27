@@ -19,6 +19,7 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
     private let clipboard: ClipboardManager
     private let camera: CameraManager
 
+    let screen: NSScreen
     private var hoverMonitor: EventMonitor?
     private var openTask: Task<Void, Never>?
     private var closeTask: Task<Void, Never>?
@@ -28,6 +29,7 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
     private var mouseOutsideSince: Date?
 
     init(screen: NSScreen, media: MediaManager, clipboard: ClipboardManager, camera: CameraManager) {
+        self.screen = screen
         self.viewModel = NotchViewModel(screen: screen)
         self.media = media
         self.clipboard = clipboard
@@ -38,14 +40,36 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
         observeScreenLock()
     }
 
+    func invalidate() {
+        hoverPollTimer?.invalidate()
+        hoverPollTimer = nil
+        hoverMonitor?.stop()
+        hoverMonitor = nil
+        clickMonitor?.stop()
+        clickMonitor = nil
+        rightClickMonitor?.stop()
+        rightClickMonitor = nil
+        keyMonitor?.stop()
+        keyMonitor = nil
+        panel?.orderOut(nil)
+        panel = nil
+    }
+
+    deinit {
+        hoverPollTimer?.invalidate()
+        hoverMonitor?.stop()
+        clickMonitor?.stop()
+        rightClickMonitor?.stop()
+        keyMonitor?.stop()
+        panel?.orderOut(nil)
+    }
+
     // MARK: - Setup
 
     private func setupPanel(screen: NSScreen) {
         let panelWidth = viewModel.openWidth
         let panelHeight = viewModel.topInset + viewModel.contentHeight + 40
-        let panelTop = viewModel.hasNotch
-            ? screen.frame.maxY
-            : screen.visibleFrame.maxY - 4 // float just below the menu bar
+        let panelTop = screen.frame.maxY
         let panelX = screen.notchGeometry.centerX - panelWidth / 2
 
         let panel = NotchPanel(
@@ -159,21 +183,20 @@ final class NotchWindowController: NSObject, NSWindowDelegate {
     // MARK: - Hover / click handling
 
     private var notchHotScreenRect: NSRect {
-        guard let screen = panel?.screen ?? NSScreen.main else { return .zero }
         let geom = screen.notchGeometry
-        let notchWidth = geom.hasNotch ? geom.size.width : 210
-        let notchHeight = geom.hasNotch ? geom.size.height : 34
+        let notchWidth = geom.hasNotch ? geom.size.width : 220
+        let menuBarHeight = max(screen.frame.maxY - screen.visibleFrame.maxY, 28)
+        let notchHeight = geom.hasNotch ? geom.size.height : menuBarHeight
         // Screen coordinates: y = screen.frame.maxY is the physical top bezel
         return NSRect(
-            x: geom.centerX - notchWidth / 2 - 12,
+            x: geom.centerX - notchWidth / 2 - 16,
             y: screen.frame.maxY - notchHeight - 6,
-            width: notchWidth + 24,
+            width: notchWidth + 32,
             height: notchHeight + 10
         )
     }
 
     private var expandedStayScreenRect: NSRect {
-        guard let screen = panel?.screen ?? NSScreen.main else { return .zero }
         let panelWidth = viewModel.openWidth
         let totalHeight = viewModel.topInset + viewModel.contentHeight + 20
         return NSRect(
