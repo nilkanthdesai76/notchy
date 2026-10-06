@@ -325,7 +325,6 @@ private struct NotchExpandedContent: View {
     @ObservedObject var viewModel: NotchViewModel
     @ObservedObject private var stats = SystemStatsManager.shared
     @ObservedObject private var layout = PageLayoutManager.shared
-    @ObservedObject private var lm = LicenseManager.shared
     @AppStorage("showBatteryIndicator") private var showBatteryIndicator = true
 
     var body: some View {
@@ -437,20 +436,12 @@ private struct NotchExpandedContent: View {
                     .animation(.spring(response: 0.36, dampingFraction: 0.82), value: viewModel.selectedPage)
                 }
 
-                // Trial banner (only visible during trial)
-                TrialBannerView()
+                // Carousel content end
             }
             .padding(.horizontal, 24)
             .padding(.top, 12)
             .padding(.bottom, 12)
             .frame(width: viewModel.openWidth, height: viewModel.contentHeight, alignment: .top)
-
-            // License gate overlay (only when trial expired)
-            if case .trialExpired = lm.state {
-                LicenseGateView()
-                    .frame(width: viewModel.openWidth, height: viewModel.contentHeight)
-                    .transition(.opacity)
-            }
         }
         .frame(width: viewModel.openWidth, height: viewModel.contentHeight, alignment: .top)
     }

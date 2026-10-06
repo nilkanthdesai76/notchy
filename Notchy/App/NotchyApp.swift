@@ -20,8 +20,6 @@ struct NotchyApp: App {
             "glassOpacity": 1.0,
             "cardGlassOpacity": 0.85
         ])
-        // Kick off license / trial check as early as possible
-        Task { await LicenseManager.shared.checkOnLaunch() }
     }
 
     var body: some Scene {

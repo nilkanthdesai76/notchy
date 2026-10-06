@@ -22,7 +22,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     case appearance = "Appearance"
     case shelf = "File Shelf"
     case ai = "AI Providers"
-    case license = "License"
+    case support = "Support"
     case about = "About"
 
     var id: String { rawValue }
@@ -35,7 +35,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .appearance: return "paintpalette.fill"
         case .shelf: return "tray.and.arrow.down.fill"
         case .ai: return "sparkles"
-        case .license: return "key.fill"
+        case .support: return "cup.and.saucer.fill"
         case .about: return "info.circle.fill"
         }
     }
@@ -104,8 +104,8 @@ struct SettingsView: View {
                     SettingsShelfTab()
                 case .ai:
                     SettingsAITab()
-                case .license:
-                    SettingsLicenseTab()
+                case .support:
+                    SettingsSupportTab()
                 case .about:
                     SettingsAboutTab()
                 }
@@ -797,258 +797,146 @@ private struct AIProviderCard: View {
     }
 }
 
-// MARK: - Tab 7: License (Monetization)
+// MARK: - Tab 7: Support & Buy Me a Coffee
 
-private struct SettingsLicenseTab: View {
-    @ObservedObject private var lm = LicenseManager.shared
-    @State private var emailInput = ""
-    @State private var keyInput = ""
-    @State private var isActivating = false
-    @State private var activateError: String?
-    @State private var showDeviceList = false
-    @State private var isDeactivating = false
+private struct SettingsSupportTab: View {
+    @State private var isCoffeeHovered = false
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: 14) {
+            VStack(spacing: 16) {
 
-                // ── Status Card ──────────────────────────────────
-                statusCard
+                // ── Free Forever Banner Card ──────────────────────────────────
+                GroupBox {
+                    HStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(LinearGradient(
+                                    colors: [Color.green.opacity(0.3), Color.cyan.opacity(0.2)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ))
+                                .frame(width: 44, height: 44)
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.system(size: 24))
+                                .foregroundStyle(Color.green)
+                        }
 
-                // ── Activate / Enter Key ─────────────────────────
-                if case .trialExpired = lm.state { activateCard }
-                if case .trial = lm.state        { activateCard }
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("100% Free for Everyone")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(.white)
+                            Text("No subscriptions, no trials, and no license keys. All modules and updates are completely free on unlimited Macs.")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+                        Spacer()
+                    }
+                    .padding(.vertical, 6)
+                } label: {
+                    Label("Status", systemImage: "sparkles")
+                }
 
-                // ── Device Management (when licensed) ────────────
-                if case .licensed = lm.state { deviceCard }
+                // ── Buy Me a Coffee Card ─────────────────────────────────────
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(Color.orange.opacity(0.18))
+                                    .frame(width: 40, height: 40)
+                                Image(systemName: "cup.and.saucer.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundStyle(Color.orange)
+                            }
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Support Notchy Development")
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundStyle(.white)
+                                Text("Crafted with passion by an independent creator. If you love Notchy, consider buying me a coffee to support future updates!")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Divider()
+
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Label("All 8 mini-modules fully unlocked", systemImage: "checkmark.circle.fill")
+                                    .font(.system(size: 10.5))
+                                    .foregroundStyle(.secondary)
+                                Label("Multi-monitor & notch-less Mac support", systemImage: "checkmark.circle.fill")
+                                    .font(.system(size: 10.5))
+                                    .foregroundStyle(.secondary)
+                                Label("No analytics or third-party trackers", systemImage: "checkmark.circle.fill")
+                                    .font(.system(size: 10.5))
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+
+                            Button {
+                                if let url = URL(string: "https://buymeacoffee.com/nilkanthdesai76") {
+                                    NSWorkspace.shared.open(url)
+                                }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "cup.and.saucer.fill")
+                                        .font(.system(size: 12, weight: .bold))
+                                    Text("Buy Me a Coffee ☕️")
+                                        .font(.system(size: 12, weight: .bold))
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .fill(LinearGradient(
+                                            colors: [Color(red: 1.0, green: 0.86, blue: 0.20), Color(red: 1.0, green: 0.65, blue: 0.0)],
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        ))
+                                )
+                                .foregroundStyle(Color.black)
+                                .shadow(color: Color.orange.opacity(0.3), radius: 6, x: 0, y: 3)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, 6)
+                } label: {
+                    Label("Fuel the Creator", systemImage: "heart.fill")
+                }
+
+                // ── Community & Feedback ─────────────────────────────────────
+                GroupBox {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Have feedback, ideas or feature requests?")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(.white)
+                            Text("Join discussions, suggest features or report bugs directly.")
+                                .font(.system(size: 10.5))
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button("Visit Website ↗") {
+                            if let url = URL(string: "https://www.nildesai.com/notchy") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                        .controlSize(.small)
+                    }
+                    .padding(.vertical, 4)
+                } label: {
+                    Label("Community", systemImage: "bubble.left.and.bubble.right.fill")
+                }
             }
             .padding(14)
         }
         .scrollContentBackground(.hidden)
-        .sheet(isPresented: $showDeviceList) {
-            DeviceLimitView(licenseKey: keyInput) { showDeviceList = false }
-        }
-    }
-
-    // MARK: Status Card
-    @ViewBuilder private var statusCard: some View {
-        GroupBox {
-            HStack(spacing: 12) {
-                Group {
-                    switch lm.state {
-                    case .loading:
-                        ProgressView().scaleEffect(0.7)
-                            .frame(width: 28, height: 28)
-                    case .trial:
-                        Image(systemName: "clock.badge.exclamationmark.fill")
-                            .font(.system(size: 26))
-                            .foregroundStyle(.yellow)
-                    case .trialExpired:
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 26))
-                            .foregroundStyle(.red)
-                    case .licensed:
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 26))
-                            .foregroundStyle(.green)
-                    case .offlineGrace:
-                        Image(systemName: "wifi.slash")
-                            .font(.system(size: 26))
-                            .foregroundStyle(.orange)
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(statusTitle)
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(statusColor)
-                    Text(statusSubtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-            }
-            .padding(.vertical, 4)
-        } label: {
-            Label("License Status", systemImage: "key.fill")
-        }
-    }
-
-    // MARK: Activate Card
-    private var activateCard: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 10) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("PURCHASE EMAIL")
-                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .tracking(1.2)
-
-                    TextField("you@example.com", text: $emailInput)
-                        .textFieldStyle(.roundedBorder)
-                        .font(.system(.body))
-                        .autocorrectionDisabled()
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("ENTER LICENSE KEY")
-                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .tracking(1.2)
-
-                    HStack(spacing: 8) {
-                        TextField("NOTCHY-XXXX-XXXX-XXXX", text: $keyInput)
-                            .textFieldStyle(.roundedBorder)
-                            .font(.system(.body, design: .monospaced))
-                            .autocorrectionDisabled()
-                            .onSubmit { Task { await activate() } }
-
-                        Button {
-                            Task { await activate() }
-                        } label: {
-                            if isActivating {
-                                ProgressView().scaleEffect(0.7).frame(width: 64, height: 22)
-                            } else {
-                                Text("Activate")
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(keyInput.trimmingCharacters(in: .whitespaces).isEmpty || emailInput.trimmingCharacters(in: .whitespaces).isEmpty || isActivating)
-                    }
-                }
-
-                if let err = activateError {
-                    Text(err)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                }
-
-                Divider()
-                    .padding(.vertical, 2)
-
-                HStack {
-                    Text("Don't have a license key?")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Button("Get License Key ↗") {
-                        lm.openBuyPage()
-                    }
-                    .buttonStyle(.link)
-                    .font(.caption)
-                }
-            }
-        } label: {
-            Label("Activate License", systemImage: "person.badge.key.fill")
-        }
-    }
-
-    // MARK: Device Card
-    @ViewBuilder private var deviceCard: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 8) {
-                if lm.activatedDevices.isEmpty {
-                    Button("Load Device List") {
-                        Task {
-                            if let key = lm.currentLicenseKey {
-                                await lm.fetchDevices(licenseKey: key)
-                            }
-                        }
-                    }
-                } else {
-                    ForEach(lm.activatedDevices) { device in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                HStack(spacing: 4) {
-                                    if device.device_id == lm.hardwareUUID {
-                                        Text("This Mac")
-                                            .font(.system(size: 11, weight: .semibold))
-                                            .foregroundStyle(.green)
-                                            .padding(.horizontal, 5)
-                                            .padding(.vertical, 1)
-                                            .background(Color.green.opacity(0.12), in: Capsule())
-                                    }
-                                    Text(device.device_name)
-                                        .font(.system(size: 12, weight: .medium))
-                                }
-                                Text("Activated: \(device.activated_at.prefix(10))")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if device.device_id == lm.hardwareUUID {
-                                Button("Deactivate this Mac") {
-                                    Task {
-                                        isDeactivating = true
-                                        _ = await lm.deactivateCurrentDevice()
-                                        isDeactivating = false
-                                    }
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                                .disabled(isDeactivating)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                        if device.id != lm.activatedDevices.last?.id {
-                            Divider()
-                        }
-                    }
-                }
-            }
-        } label: {
-            Label("Activated Devices  (\(lm.activatedDevices.count) / \(lm.currentPlan == "pro" ? 2 : 1))", systemImage: "desktopcomputer")
-        }
-        .onAppear {
-            if let key = lm.currentLicenseKey {
-                Task { await lm.fetchDevices(licenseKey: key) }
-            }
-        }
-    }
-
-    // MARK: Helpers
-    private var statusTitle: String {
-        switch lm.state {
-        case .loading:            return "Checking license…"
-        case .trial(let days):    return "Trial — \(days) day\(days == 1 ? "" : "s") remaining"
-        case .trialExpired:       return "Trial Expired"
-        case .licensed(let plan): return "Licensed · \(plan.capitalized)"
-        case .offlineGrace(let plan, let days): return "Offline Grace · \(plan.capitalized) · \(days)d left"
-        }
-    }
-    private var statusSubtitle: String {
-        switch lm.state {
-        case .trial:          return "Enter your license key or get one at nildesai.com/notchy."
-        case .trialExpired:   return "Your 2-day trial has ended. Enter a license key to continue."
-        case .licensed:
-            if let email = lm.currentEmail, !email.isEmpty {
-                return "Licensed to \(email) · Thank you for supporting Notchy! ✦"
-            }
-            return "Thank you for supporting Notchy! ✦"
-        case .offlineGrace:   return "Connect to the internet to re-validate your license."
-        case .loading:        return ""
-        }
-    }
-    private var statusColor: Color {
-        switch lm.state {
-        case .licensed:     return .green
-        case .trialExpired: return .red
-        case .offlineGrace: return .orange
-        default:            return .yellow
-        }
-    }
-
-    private func activate() async {
-        isActivating = true
-        activateError = nil
-        let result = await lm.activateLicense(key: keyInput, email: emailInput)
-        isActivating = false
-        switch result {
-        case .success: break
-        case .failure(let err):
-            if case .deviceLimitReached = err { showDeviceList = true }
-            else { activateError = err.errorDescription }
-        }
     }
 }
 

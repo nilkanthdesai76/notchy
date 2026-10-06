@@ -52,7 +52,7 @@ final class LicenseManager: ObservableObject {
     private let pricingURL = "https://www.nildesai.com/notchy#pricing"
 
     // MARK: Published state
-    @Published private(set) var state: LicenseState = .loading
+    @Published private(set) var state: LicenseState = .licensed(plan: "community")
     @Published private(set) var activatedDevices: [ActivatedDevice] = []
     @Published var isLoading = false
     @Published var errorMessage: String? = nil
@@ -78,39 +78,7 @@ final class LicenseManager: ObservableObject {
     // MARK: - Boot Check
 
     func checkOnLaunch() async {
-        state = .loading
-        isLoading = true
-        defer { isLoading = false }
-
-        // 1. Check keychain for cached license
-        if let cache = loadLicenseCache() {
-            if cache.isGraceExpired {
-                // Try to re-validate online
-                if let plan = await validateOnline(licenseKey: cache.licenseKey) {
-                    saveLicenseCache(LicenseCache(licenseKey: cache.licenseKey, email: cache.email, plan: plan, validatedAt: Date()))
-                    state = .licensed(plan: plan)
-                } else {
-                    // Offline AND grace expired → treat as expired (but don't delete key — user may reconnect)
-                    state = .trialExpired
-                }
-            } else {
-                // Within grace — go licensed immediately, validate silently in background
-                state = .licensed(plan: cache.plan)
-                Task { await silentRevalidate(cache: cache) }
-            }
-            return
-        }
-
-        // 2. No license — check trial via Supabase
-        do {
-            let trialResponse = try await callFunction("check_or_start_trial", body: ["p_device_id": hardwareUUID])
-            let expired = trialResponse["expired"] as? Bool ?? true
-            let daysLeft = trialResponse["days_left"] as? Int ?? 0
-            state = expired ? .trialExpired : .trial(daysLeft: daysLeft)
-        } catch {
-            // Network failure on first launch — assume trial active (offline tolerance)
-            state = .trial(daysLeft: 2)
-        }
+        state = .licensed(plan: "community")
     }
 
     // MARK: - Activate License
