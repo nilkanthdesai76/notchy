@@ -66,7 +66,7 @@ Notchy/
 ├── App/            Entry point (@main + MenuBarExtra), AppDelegate, Settings window
 ├── Notch/          NSPanel, NotchViewModel, shape definitions, hover logic (NSEvent monitors)
 ├── Modules/        One folder per module — Manager (logic) + View (SwiftUI)
-└── Settings/       SettingsView (tabs: General, Modules, Organizer, License, About)
+└── Settings/       SettingsView (tabs: General, Live Activities, Pages & Layout, Appearance, File Shelf, AI Providers, Support, About)
 ```
 
 **Key design decisions:**
